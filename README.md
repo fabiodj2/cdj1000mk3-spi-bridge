@@ -1,89 +1,91 @@
 # cdj1000mk3-spi-bridge
 
-**Repositori Resmi:** [https://github.com/rayocta303/cdj1000mk3-spi-bridge](https://github.com/rayocta303/cdj1000mk3-spi-bridge)  
-**Pengembang / Author:** Hanif Bagus Saputra  
-**Lisensi:** MIT License  
+**Official Repository:** [https://github.com/rayocta303/cdj1000mk3-spi-bridge](https://github.com/rayocta303/cdj1000mk3-spi-bridge)  
+**Developer / Author:** Hanif Bagus Saputra  
+**License:** MIT License  
+**Languages:** [English](README.md) | [Bahasa Indonesia](README-ID.md)
 
-Dokumentasi teknis, spesifikasi protokol SPI, skematik antarmuka perangkat keras (5V dan 3.3V ESP32 / Teensy), diagram aliran data (DFD), dan panduan implementasi firmware untuk membaca kontrol panel fisik Pioneer CDJ-1000 MK3 serta mengontrol status LED dan display jog menggunakan mikrokontroler.
-
----
-
-## Daftar Isi
-1. [Ringkasan Teknis](#ringkasan-teknis)
-2. [Arsitektur Perangkat Lunak](#arsitektur-perangkat-lunak)
-3. [Skematik Perangkat Keras dan Diagram Koneksi](#skematik-perangkat-keras-dan-diagram-koneksi)
-   - [Skematik 1: Antarmuka Langsung 5V (Arduino Uno, Nano, Mega, Pro Micro 5V)](#skematik-1-antarmuka-langsung-5v-arduino-uno-nano-mega-pro-micro-5v)
-   - [Skematik 2: Antarmuka 3.3V dengan IC 74HC245 (ESP32 & Teensy 4.x/3.x)](#skematik-2-antarmuka-33v-dengan-ic-74hc245-esp32--teensy-4x3x)
-   - [Skematik 3: Antarmuka 3.3V dengan Modul Level Shifter 4-Channel Siap Pakai](#skematik-3-antarmuka-33v-dengan-modul-level-shifter-4-channel-siap-pakai)
-4. [Diagram Aliran Data (Data Flow Diagram - DFD)](#diagram-aliran-data-data-flow-diagram---dfd)
-   - [DFD Tingkat 0 (Diagram Konteks)](#dfd-tingkat-0-diagram-konteks)
-   - [DFD Tingkat 1 (Dekomposisi Fungsional)](#dfd-tingkat-1-dekomposisi-fungsional)
-5. [Konfigurasi Pinout Terpisah](#konfigurasi-pinout-terpisah)
-6. [Spesifikasi Protokol Komunikasi SPI](#spesifikasi-protokol-komunikasi-spi)
-7. [Struktur Paket Data 27-Byte](#struktur-paket-data-27-byte)
-   - [Paket Input: Display Board ke Main Assy (Rbuffer)](#paket-input-display-board-ke-main-assy-rbuffer)
-   - [Paket Output: Main Assy ke Display Board (Tbuffer)](#paket-output-main-assy-ke-display-board-tbuffer)
-   - [Algoritma Checksum (CRC)](#algoritma-checksum-crc)
-8. [Referensi API Kelas Utama](#referensi-api-kelas-utama)
-9. [Panduan Penggunaan dan Contoh Aplikasi](#panduan-penggunaan-dan-contoh-aplikasi)
-   - [Contoh 1: Serial Monitor Diagnostic](#contoh-1-serial-monitor-diagnostic)
-   - [Contoh 2: USB MIDI Controller untuk Rekordbox](#contoh-2-usb-midi-controller-untuk-rekordbox)
-   - [Contoh 3: Main Board Hardware-in-the-Loop Emulator](#contoh-3-main-board-hardware-in-the-loop-emulator)
-10. [Lisensi dan Kredit Riset](#lisensi-dan-kredit-riset)
+Technical documentation, SPI protocol specifications, hardware interface schematics (5V and 3.3V ESP32 / Teensy), Data Flow Diagrams (DFD), and firmware implementation guide for reading the physical Pioneer CDJ-1000 MK3 panel controls, status LEDs, and jog wheel display using microcontrollers.
 
 ---
 
-## Ringkasan Teknis
-
-Unit Pioneer CDJ-1000 MK3 menggunakan arsitektur modular terdistribusi di mana sub-sistem kontrol panel atas (Display/FL Board - DFLB) dikendalikan oleh mikroprosesor internal khusus. Komunikasi antara Main Board (Main Assy) dan Display Board berjalan melalui bus Serial Peripheral Interface (SPI) berpemilik (*proprietary*) full-duplex dengan panjang bingkai 27 byte.
-
-Library ini mengimplementasikan emulasi dua arah (*bidirectional emulation*):
-* **Mode Slave (Default):** Mikrokontroler Arduino/ESP32/Teensy terhubung langsung ke Display Board fisik untuk membaca status seluruh tombol, jog wheel encoder (3600 Pulse per Revolution), sensor sentuh kapasitif/mekanis, dan fader pitch 14-bit. Mikrokontroler sekaligus mengirimkan bingkai balasan untuk menyalakan LED (Play, Cue, Hot Cue tri-color, Loop, Vinyl/CDJ) dan kursor kincir jog display (135 segmen).
-* **Mode Master:** Mikrokontroler bertindak sebagai pengganti Display Board untuk mengemulasikan input tombol ke Main Assy motherboard CDJ-1000 MK3.
+## Table of Contents
+1. [Technical Overview](#technical-overview)
+2. [Software Architecture](#software-architecture)
+3. [Hardware Schematics and Wiring Diagrams](#hardware-schematics-and-wiring-diagrams)
+   - [Schematic 1: Direct 5V Interface (Arduino Uno, Nano, Mega, Pro Micro 5V)](#schematic-1-direct-5v-interface-arduino-uno-nano-mega-pro-micro-5v)
+   - [Schematic 2: 3.3V Interface with 74HC245 Transceiver (ESP32 & Teensy 4.x/3.x)](#schematic-2-33v-interface-with-74hc245-transceiver-esp32--teensy-4x3x)
+   - [Schematic 3: 3.3V Interface with 4-Channel Level Shifter Module](#schematic-3-33v-interface-with-4-channel-level-shifter-module)
+4. [Data Flow Diagrams (DFD)](#data-flow-diagrams-dfd)
+   - [Level 0 DFD (Context Diagram)](#level-0-dfd-context-diagram)
+   - [Level 1 DFD (Functional Decomposition)](#level-1-dfd-functional-decomposition)
+5. [Modular Pinout Configuration](#modular-pinout-configuration)
+6. [SPI Communication Protocol Specification](#spi-communication-protocol-specification)
+7. [27-Byte Packet Data Structures](#27-byte-packet-data-structures)
+   - [Input Packet: Display Board to Main Assy (Rbuffer)](#input-packet-display-board-to-main-assy-rbuffer)
+   - [Output Packet: Main Assy to Display Board (Tbuffer)](#output-packet-main-assy-to-display-board-tbuffer)
+   - [Checksum Algorithm (CRC)](#checksum-algorithm-crc)
+8. [Core Class API Reference](#core-class-api-reference)
+9. [Usage Guide and Application Examples](#usage-guide-and-application-examples)
+   - [Example 1: Serial Monitor Diagnostic](#example-1-serial-monitor-diagnostic)
+   - [Example 2: USB MIDI Controller for Rekordbox](#example-2-usb-midi-controller-for-rekordbox)
+   - [Example 3: Main Board Hardware-in-the-Loop Emulator](#example-3-main-board-hardware-in-the-loop-emulator)
+10. [License and Research Credits](#license-and-research-credits)
 
 ---
 
-## Arsitektur Perangkat Lunak
+## Technical Overview
 
-Struktur kode dirancang dengan pemisahan lapisan abstraksi (*layer separation*) yang ketat:
+The Pioneer CDJ-1000 MK3 utilizes a distributed modular architecture where the top panel control sub-system (Display/FL Board - DFLB) is governed by its own dedicated on-board microprocessor. Communication between the Main Board (Main Assy) and the Display Board operates across a proprietary, full-duplex Serial Peripheral Interface (SPI) bus using fixed 27-byte transactions.
+
+This library provides full bidirectional emulation:
+* **Slave Mode (Default):** An Arduino, ESP32, or Teensy microcontroller connects directly to the physical Display Board to read all button states, optical jog wheel encoder pulses (3600 Pulses per Revolution), capacitive/mechanical touch sensors, and 14-bit pitch fader values. Simultaneously, the MCU transmits feedback frames to drive transport and status LEDs (Play, Cue, Tri-color Hot Cues, Loop, Vinyl/CDJ) and update the 135-segment circular jog display cursor.
+* **Master Mode:** The microcontroller emulates the Display Board to send button and sensor events directly to the CDJ-1000 MK3 Main Assy motherboard.
+
+---
+
+## Software Architecture
+
+The codebase enforces strict separation of concerns across abstraction layers:
 
 ```text
 P:\CDJ1000MK3-EMULATOR\
 ├── src\
-│   ├── CDJ1000MK3.h             # Master header include
-│   ├── CDJ1000MK3_Pins.h        # Konfigurasi pinout terpisah & preset board
-│   ├── CDJ1000MK3_Protocol.h    # Definisi konstanta, bitmask tombol/LED, dan struct 27-byte
-│   ├── CDJ1000MK3_Protocol.cpp  # Parser paket, pembuat template, dan verifikasi checksum
-│   ├── CDJ1000MK3_SPI.h         # Abstraksi driver SPI hardware (Slave & Master)
-│   ├── CDJ1000MK3_SPI.cpp       # Rutin layanan interupsi (ISR) SPI & sinkronisasi XCS
-│   ├── CDJ1000MK3_Panel.h       # Antarmuka tingkat tinggi CDJ1000MK3_Panel berorientasi objek
-│   ├── CDJ1000MK3_Panel.cpp     # Pengolahan state tombol, debounce, kalkulasi delta, & LED
-│   └── CDJ1000MK3_MidiMap.h     # Pemetaan standar MIDI Note & Continuous Controller (CC)
+│   ├── CDJ1000MK3.h             # Master include header
+│   ├── CDJ1000MK3_Pins.h        # Dedicated pinout configuration & board presets
+│   ├── CDJ1000MK3_Protocol.h    # Protocol definitions, button/LED bitmasks, 27-byte structs
+│   ├── CDJ1000MK3_Protocol.cpp  # Packet parser, frame builder, and signature verification
+│   ├── CDJ1000MK3_SPI.h         # Hardware SPI driver abstraction (Slave & Master)
+│   ├── CDJ1000MK3_SPI.cpp       # SPI interrupt service routines (ISR) & XCS frame sync
+│   ├── CDJ1000MK3_Panel.h       # High-level object-oriented CDJ1000MK3_Panel interface
+│   ├── CDJ1000MK3_Panel.cpp     # Button debouncing, delta calculation, and LED control
+│   └── CDJ1000MK3_MidiMap.h     # Standard MIDI Note & Continuous Controller (CC) mappings
 ├── examples\
 │   ├── CDJ1000MK3_Serial_Monitor\
-│   │   └── CDJ1000MK3_Serial_Monitor.ino      # Pengujian tombol & LED via Serial Terminal
+│   │   └── CDJ1000MK3_Serial_Monitor.ino      # Hardware diagnostic via Serial Terminal
 │   ├── CDJ1000MK3_USB_MIDI\
-│   │   ├── CDJ1000MK3_USB_MIDI.ino            # Native USB MIDI controller untuk Rekordbox
-│   │   └── CDJ1000MK3_Rekordbox.csv           # File konfigurasi mapping CSV Rekordbox
+│   │   ├── CDJ1000MK3_USB_MIDI.ino            # Native USB MIDI controller for Rekordbox
+│   │   └── CDJ1000MK3_Rekordbox.csv           # Rekordbox CSV MIDI mapping configuration
 │   └── CDJ1000MK3_MainBoard_Emulator\
-│       └── CDJ1000MK3_MainBoard_Emulator.ino  # Emulasi panel ke Motherboard CDJ
-├── reference\                   # Dokumen riset reverse engineering asli & source C
-├── library.properties           # Format manifest standar Arduino Library Manager
-├── keywords.txt                 # Definisi syntax highlighting Arduino IDE
-└── README.md                    # Dokumentasi teknis proyek
+│       └── CDJ1000MK3_MainBoard_Emulator.ino  # Top panel emulator for CDJ Motherboard
+├── reference\                   # Original reverse engineering research notes & C sources
+├── library.properties           # Arduino Library Manager specification manifest
+├── keywords.txt                 # Arduino IDE syntax highlighting keywords
+├── README.md                    # English technical documentation
+└── README-ID.md                 # Indonesian technical documentation
 ```
 
 ---
 
-## Skematik Perangkat Keras dan Diagram Koneksi
+## Hardware Schematics and Wiring Diagrams
 
-### Skematik 1: Antarmuka Langsung 5V (Arduino Uno, Nano, Mega, Pro Micro 5V)
+### Schematic 1: Direct 5V Interface (Arduino Uno, Nano, Mega, Pro Micro 5V)
 
-Karena logika Display Board CDJ-1000 MK3 dan mikrokontroler berbasis ATmega328P / ATmega32U4 / ATmega2560 sama-sama bekerja pada **5V**, sirkuit tidak membutuhkan IC level shifter. Cukup 5 kabel langsung:
+Because both the CDJ-1000 MK3 Display Board and 5V ATmega-based microcontrollers (ATmega328P, ATmega32U4, ATmega2560) operate on **5V TTL logic**, no level shifter is required. A direct 5-wire connection is sufficient:
 
 ```text
-  PIONEER CDJ-1000 MK3                        ARDUINO MIKROKONTROLER (5V)
-  Konektor Panel Atas (CN2002)                (Uno / Nano / Pro Micro / Mega)
+  PIONEER CDJ-1000 MK3                        ARDUINO MICROCONTROLLER (5V)
+  Top Panel Connector (CN2002)                (Uno / Nano / Pro Micro / Mega)
  +-----------------------------+             +-------------------------------+
  | Pin 13 : SCLK (SPI Clock)   |------------>| Pin SCK  (D13 / D15 / D52)    |
  | Pin 14 : SOUT (Display Out) |------------>| Pin MOSI (D11 / D16 / D51)    |
@@ -95,100 +97,100 @@ Karena logika Display Board CDJ-1000 MK3 dan mikrokontroler berbasis ATmega328P 
 
 ---
 
-### Skematik 2: Antarmuka 3.3V dengan IC 74HC245 (ESP32 & Teensy 4.x/3.x)
+### Schematic 2: 3.3V Interface with 74HC245 Transceiver (ESP32 & Teensy 4.x/3.x)
 
-Display Board CDJ-1000 MK3 mengeluarkan sinyal SPI dengan level tegangan **5V**, sedangkan mikrokontroler ESP32, Teensy 4.0/4.1, dan STM32 bekerja pada level tegangan **3.3V**. Menghubungkan sinyal 5V langsung ke pin 3.3V dapat merusak mikrokontroler secara permanen.
+The CDJ-1000 MK3 Display Board outputs SPI signals at **5V**, while modern microcontrollers such as the ESP32, Teensy 4.0/4.1, and STM32 operate strictly at **3.3V**. Connecting 5V signals directly to 3.3V GPIO pins will cause permanent damage.
 
-Metode ini menggunakan IC **74HC245 (Octal Bus Transceiver)** yang diberi daya $V_{CC} = 3.3\text{V}$, dilengkapi filter *low-pass* (resistor 10k dan kapasitor keramik 220pF) untuk meredam noise pada kabel pita (*ribbon cable*) panjang CDJ.
+This design utilizes an octal bus transceiver (**74HC245**) powered from $V_{CC} = 3.3\text{V}$, supplemented with low-pass filtering (10k pull-up resistors and 220pF ceramic capacitors) to suppress transient ringing across long CDJ ribbon cables.
 
-#### Daftar Komponen (Bill of Materials per 1 Unit CDJ):
-* 1x IC 74HC245 (DIP-20 atau SOIC-20)
-* 3x Kapasitor Keramik 220 pF (Filter noise pada jalur SCLK, SOUT, XCS)
-* 1x Kapasitor Keramik 1.0 uF (Bypass/decoupling VCC pin 20 ke GND)
-* 3x Resistor 10 kOhm (Pull-up ke 3.3V pada sisi input CDJ)
-* 1x Resistor 470 Ohm (Resistor proteksi seri pada jalur SIN dari MCU ke CDJ)
+#### Bill of Materials (per 1 CDJ Unit):
+* 1x 74HC245 IC (DIP-20 or SOIC-20)
+* 3x Ceramic Capacitors 220 pF (Noise filter on SCLK, SOUT, and XCS lines)
+* 1x Ceramic Capacitor 1.0 uF (Decoupling bypass from pin 20 VCC to GND)
+* 3x Resistors 10 kOhm (Pull-up to 3.3V on input side)
+* 1x Resistor 470 Ohm (Series protection on the SIN line from MCU to CDJ)
 
-*(Catatan: Jika mengendalikan 2 unit CDJ sekaligus untuk Deck 1 & Deck 2, kalikan seluruh jumlah komponen di atas dengan 2).*
+*(Note: If connecting two CDJ units simultaneously for Deck 1 and Deck 2, double all component quantities).*
 
-#### Diagram Skematik Sirkuit 74HC245:
+#### 74HC245 Circuit Schematic:
 
 ```text
- Dari CDJ-1000 MK3 (5V)                                               Ke ESP32 / Teensy (3.3V)
+ From CDJ-1000 MK3 (5V)                                               To ESP32 / Teensy (3.3V)
  
-                          +3.3V (Dari Pin 3V3 MCU)
+                          +3.3V (From MCU 3V3 Pin)
                             |
                      +------+------+------+
                      |      |      |      |
                     [R1]   [R2]   [R3]   [C4]
                     10K    10K    10K    1uF
                      |      |      |      |
-                     |      |      |     GNDD
+                     |      |      |     GND
                      |      |      |
  CDJ Pin 14 (SOUT) --+------+-----------------> Pin 2  (A0)   (B0) Pin 18 --------> ESP32 GPIO 23 / Teensy Pin 11 (MOSI)
                      |             |
                     [C1] 220pF     |
                      |             |
-                    GNDD           |
+                    GND            |
                                    |
  CDJ Pin 16 (XCS)  ---------+------+----------> Pin 3  (A1)   (B1) Pin 17 --------> ESP32 GPIO 5  / Teensy Pin 10 (CS/XCS)
                             |      |
                            [C2] 220pF
                             |      |
-                           GNDD    |
+                           GND     |
                                    |
  CDJ Pin 13 (SCLK) ----------------+----------> Pin 4  (A2)   (B2) Pin 16 --------> ESP32 GPIO 18 / Teensy Pin 13 (SCK)
                             |
                            [C3] 220pF
                             |
-                           GNDD
+                           GND
  
                                  74HC245 Pinout:
-                                 Pin 1  (DIR / A->B) ---> +3.3V (Arah transmisi A ke B)
-                                 Pin 20 (VCC)        ---> +3.3V (Dari Pin 3V3 MCU)
-                                 Pin 19 (/OE)        ---> GNDD  (Selalu aktif / Output Enable)
-                                 Pin 10 (GND)        ---> GNDD  (Ground bersama)
+                                 Pin 1  (DIR / A->B) ---> +3.3V (Buffer direction A to B)
+                                 Pin 20 (VCC)        ---> +3.3V (From MCU 3V3 rail)
+                                 Pin 19 (/OE)        ---> GND   (Always active / Output Enable Low)
+                                 Pin 10 (GND)        ---> GND   (Common system ground)
  
                                  [R4] 470 Ohm
  CDJ Pin 15 (SIN)  <-------------/\/\/\/\------------------------------------------ ESP32 GPIO 19 / Teensy Pin 12 (MISO)
  
- CDJ Pin GND (GNDD) -------------------------------------------------------------- GND (Ground bersama MCU)
+ CDJ Pin GND (GNDD) -------------------------------------------------------------- GND (Common MCU Ground)
 ```
 
-#### Tabel Rincian Koneksi Pin 74HC245:
+#### 74HC245 Pin Connection Table:
 
-| Pin 74HC245 | Nama Pin | Terhubung ke | Level Tegangan | Keterangan Fungsi |
+| 74HC245 Pin | Pin Name | Connected To | Voltage Level | Description |
 | :---: | :---: | :--- | :---: | :--- |
-| **Pin 1** | **DIR (A->B)** | Pin 3.3V MCU | 3.3V | Mengatur arah buffer dari sisi A ke sisi B |
-| **Pin 2** | **A0** | CDJ Pin 14 (SOUT) | 5V | Input data serial dari Display Board CDJ |
-| **Pin 3** | **A1** | CDJ Pin 16 (XCS) | 5V | Input sinyal seleksi Chip Select dari CDJ |
-| **Pin 4** | **A2** | CDJ Pin 13 (SCLK) | 5V | Input sinyal detak Clock SPI dari CDJ |
-| **Pin 5-9** | **A3 - A7** | *Tidak terhubung* | - | Saluran cadangan |
-| **Pin 10** | **GND** | Ground Bersama (GNDD) | 0V | Ground referensi bersama CDJ dan MCU |
-| **Pin 11-15** | **B7 - B3** | *Tidak terhubung* | - | Saluran cadangan |
-| **Pin 16** | **B2** | Pin SCK Mikrokontroler | 3.3V | Output Clock SPI aman ke MCU (GPIO 18 / Pin 13) |
-| **Pin 17** | **B1** | Pin CS Mikrokontroler | 3.3V | Output Chip Select aman ke MCU (GPIO 5 / Pin 10) |
-| **Pin 18** | **B0** | Pin MOSI Mikrokontroler | 3.3V | Output data serial CDJ aman ke input MOSI MCU (GPIO 23 / Pin 11) |
-| **Pin 19** | **/OE** | Ground Bersama (GNDD) | 0V | Mengaktifkan output buffer (Active Low) |
-| **Pin 20** | **VCC** | Pin 3.3V MCU | 3.3V | Catu daya IC level shifter dari mikrokontroler |
+| **Pin 1** | **DIR (A->B)** | MCU 3.3V Rail | 3.3V | Sets buffer propagation direction from side A to side B |
+| **Pin 2** | **A0** | CDJ Pin 14 (SOUT) | 5V | Serial data input from CDJ Display Board |
+| **Pin 3** | **A1** | CDJ Pin 16 (XCS) | 5V | Chip Select frame sync input from CDJ |
+| **Pin 4** | **A2** | CDJ Pin 13 (SCLK) | 5V | SPI Clock signal input from CDJ |
+| **Pin 5-9** | **A3 - A7** | *Unconnected* | - | Spare channels |
+| **Pin 10** | **GND** | Common Ground (GND) | 0V | Common reference ground for CDJ and MCU |
+| **Pin 11-15** | **B7 - B3** | *Unconnected* | - | Spare channels |
+| **Pin 16** | **B2** | MCU SCK Pin | 3.3V | Level-shifted safe SPI Clock to MCU (GPIO 18 / Pin 13) |
+| **Pin 17** | **B1** | MCU CS Pin | 3.3V | Level-shifted safe Chip Select to MCU (GPIO 5 / Pin 10) |
+| **Pin 18** | **B0** | MCU MOSI Pin | 3.3V | Level-shifted safe CDJ serial data to MCU MOSI (GPIO 23 / Pin 11) |
+| **Pin 19** | **/OE** | Common Ground (GND) | 0V | Enables buffer outputs (Active Low) |
+| **Pin 20** | **VCC** | MCU 3.3V Rail | 3.3V | Power supply rail for the level shifter IC |
 
 > [!NOTE]
-> **Mengapa jalur `SIN` tidak melewati IC 74HC245?**  
-> `SIN` adalah jalur data dari mikrokontroler menuju CDJ. Tegangan keluaran 3.3V dari ESP32/Teensy sudah melampaui tegangan ambang batas logika HIGH standar TTL/CMOS CDJ (ambang batas $V_{IH} \approx 2.0\text{V}$). Resistor 470 Ohm dipasang secara seri murni sebagai pembatas arus dan proteksi jika terjadi lonjakan tegangan balik dari CDJ.
+> **Why does the `SIN` line bypass the 74HC245 IC?**  
+> `SIN` is the data line transmitted from the microcontroller to the CDJ Display Board. The 3.3V output high voltage from an ESP32 or Teensy reliably exceeds the minimum logic HIGH threshold of the CDJ CMOS input buffer ($V_{IH} \approx 2.0\text{V}$). A 470 Ohm series resistor is placed purely as current limiting protection against reverse transients.
 
 ---
 
-### Skematik 3: Antarmuka 3.3V dengan Modul Level Shifter 4-Channel Siap Pakai
+### Schematic 3: 3.3V Interface with 4-Channel Level Shifter Module
 
-Jika Anda tidak ingin menyolder IC 74HC245 dan resistor/kapasitor pasif, Anda dapat menggunakan **Modul Bi-directional Logic Level Shifter 4-Channel** berbasis MOSFET (BSS138 atau TXS0108E/TXS0104E) yang banyak dijual di pasaran:
+For quick prototyping without discrete components, a standard commercial **4-Channel Bi-directional MOSFET Logic Level Shifter Module** (BSS138, TXS0108E, or TXS0104E) can be used:
 
 ```text
- CDJ-1000 MK3                                MODUL LEVEL SHIFTER                    ESP32 / TEENSY
- (Sisi High Voltage: 5V)                      (4-Channel Bi-directional)             (Sisi Low Voltage: 3.3V)
+ CDJ-1000 MK3                                LEVEL SHIFTER MODULE                   ESP32 / TEENSY
+ (High Voltage Side: 5V)                      (4-Channel Bi-directional)             (Low Voltage Side: 3.3V)
  +----------------------+                    +--------------------------+           +----------------------+
- | Pin +5V (Internal CDJ)|------------------->| HV  (Tegangan Tinggi 5V) |           |                      |
+ | Pin +5V (Internal CDJ)|------------------->| HV  (High Voltage 5V)    |           |                      |
  | Pin GND (Ground)     |-----+------------->| GND (High Side Ground)   |           |                      |
  |                      |     |              |                          |           |                      |
- |                      |     |              | LV   (Tegangan Rendah)   |<----------| Pin 3V3 (Output 3.3V)|
+ |                      |     |              | LV   (Low Voltage 3.3V)  |<----------| Pin 3V3 (3.3V Rail)  |
  |                      |     +------------->| GND (Low Side Ground)    |<----------| Pin GND (Ground)     |
  |                      |                    |                          |           |                      |
  | Pin 13 (SCLK - 5V)   |------------------->| HV1                  LV1 |---------->| Pin SCK (GPIO 18/D13)|
@@ -200,60 +202,60 @@ Jika Anda tidak ingin menyolder IC 74HC245 dan resistor/kapasitor pasif, Anda da
 
 ---
 
-## Diagram Aliran Data (Data Flow Diagram - DFD)
+## Data Flow Diagrams (DFD)
 
-### DFD Tingkat 0 (Diagram Konteks)
+### Level 0 DFD (Context Diagram)
 
-Diagram konteks menunjukkan interaksi tingkat tinggi antara entitas eksternal (Perangkat Keras CDJ, Operator DJ, dan Host DJ Software) dengan Sistem Emulator CDJ-1000 MK3.
+The context diagram illustrates high-level data exchange between external entities (CDJ Hardware, DJ Operator, and Host DJ Software) and the CDJ-1000 MK3 Emulator System:
 
 ```mermaid
 flowchart LR
-    CDJ["Perangkat Keras Panel CDJ-1000 MK3"]
-    SYS["Sistem Emulator CDJ-1000 MK3 (Arduino/ESP32/Teensy)"]
+    CDJ["Pioneer CDJ-1000 MK3 Panel Hardware"]
+    SYS["CDJ-1000 MK3 Emulator System (Arduino/ESP32/Teensy)"]
     HOST["Host PC / DJ Software (Rekordbox / Traktor)"]
 
-    CDJ -- "Sinyal SPI (SCLK, XCS, SOUT)" --> SYS
-    SYS -- "Respon SPI (SIN - LED, Kursor Jog)" --> CDJ
+    CDJ -- "SPI Bus (SCLK, XCS, SOUT)" --> SYS
+    SYS -- "SPI Response (SIN - LEDs, Jog Cursor)" --> CDJ
     
-    SYS -- "Pesan USB MIDI (Note On/Off, Pitch CC, Jog CC)" --> HOST
-    HOST -- "Feedback MIDI (Status LED Play/Cue/HotCue)" --> SYS
+    SYS -- "USB MIDI Messages (Note On/Off, Pitch CC, Jog CC)" --> HOST
+    HOST -- "MIDI Feedback (Play/Cue/HotCue LED States)" --> SYS
 ```
 
-### DFD Tingkat 1 (Dekomposisi Fungsional)
+### Level 1 DFD (Functional Decomposition)
 
-Diagram aliran data tingkat 1 mendekomposisi sistem menjadi proses-proses terisolasi: penanganan sinyal interupsi fisik, parsing bingkai data, manajemen state tombol, pemrosesan jog wheel & pitch, serta subsistem komunikasi MIDI/Serial.
+The Level 1 diagram breaks the firmware into isolated functional blocks: hardware interrupt routines, packet signature validation, button state tracking, jog encoder and pitch fader processing, and host communication adapters:
 
 ```mermaid
 flowchart TD
-    subgraph Hardware_Interface["Lapisan Antarmuka Fisik"]
+    subgraph Hardware_Interface["Physical Hardware Interface Layer"]
         SCLK["SCLK & XCS Edge Trigger"]
         SOUT["SOUT Data Stream"]
         SIN["SIN Transmit Line"]
     end
 
-    subgraph Process_Layer["Pemrosesan Firmware Emulator"]
-        P1["1.0 Rutin Layanan Interupsi SPI (ISR) & Sinkronisasi Bingkai"]
-        P2["2.0 Verifikasi Validitas & Checksum Paket (Rbuffer)"]
-        P3["3.0 Pengurai State Tombol, Switch, & ADC (Parser)"]
-        P4["4.0 Mesin Pelacak State & Deteksi Transisi (Edge Detector)"]
-        P5["5.0 Pengolah Encoder Jog & Akumulasi Delta Pulsa (3600 PPR)"]
-        P6["6.0 Filter & Normalisasi ADC Fader Pitch 14-Bit"]
-        P7["7.0 Pembangun Bingkai Balasan (Package 7 Builder)"]
-        P8["8.0 Penghitung Checksum Transmit (Tx CRC Modulo 256)"]
+    subgraph Process_Layer["Firmware Processing Pipeline"]
+        P1["1.0 SPI ISR & Frame Sync Service Routine"]
+        P2["2.0 Packet Signature & Header Validator"]
+        P3["3.0 Button, Switch & ADC State Parser"]
+        P4["4.0 Button Debounce & Edge Detector"]
+        P5["5.0 Jog Wheel Pulse Accumulator (3600 PPR)"]
+        P6["6.0 14-Bit Pitch ADC Filter & Normalizer"]
+        P7["7.0 Package 7 Feedback Frame Builder"]
+        P8["8.0 Transmit Checksum Generator (Tx CRC Modulo 256)"]
     end
 
-    subgraph Data_Stores["Penyimpan Data Status"]
-        D1[("Buffer Raw SPI (27 Byte)")]
-        D2[("Struktur State Panel Terkini")]
-        D3[("Buffer Balasan Status LED (27 Byte)")]
+    subgraph Data_Stores["Internal Data Structures"]
+        D1[("Raw SPI Buffer (27 Bytes)")]
+        D2[("Current Panel State Struct")]
+        D3[("LED Feedback Frame (27 Bytes)")]
     end
 
-    subgraph Output_Adapters["Lapisan Komunikasi Aplikasi"]
-        P9["9.0 Penerjemah Protokol USB MIDI (MIDIUSB / usbMIDI)"]
-        P10["10.0 Antarmuka Serial Terminal Debug (115200 bps)"]
+    subgraph Output_Adapters["Host Communication Adapters"]
+        P9["9.0 USB MIDI Protocol Adapter (MIDIUSB / usbMIDI)"]
+        P10["10.0 Serial Diagnostic Stream (115200 bps)"]
     end
 
-    %% Aliran Masuk
+    %% Inbound Flow
     SCLK --> P1
     SOUT --> P1
     P1 --> D1
@@ -261,20 +263,20 @@ flowchart TD
     P2 --> P3
     P3 --> D2
 
-    %% Aliran State
+    %% State Distribution
     D2 --> P4
     D2 --> P5
     D2 --> P6
 
-    %% Aliran Balasan Hardware
+    %% Feedback Generation
     P4 -. "Trigger Event" .-> P7
-    P5 -. "Posisi Kursor Jog" .-> P7
+    P5 -. "Jog Cursor Position" .-> P7
     P7 --> P8
     P8 --> D3
     D3 --> P1
     P1 --> SIN
 
-    %% Aliran Keluar ke Host
+    %% Host Output
     P4 --> P9
     P5 --> P9
     P6 --> P9
@@ -285,27 +287,27 @@ flowchart TD
 
 ---
 
-## Konfigurasi Pinout Terpisah
+## Modular Pinout Configuration
 
-Seluruh penetapan pin mikrokontroler dipisahkan dari logika program utama dan berada di file header khusus: [src/CDJ1000MK3_Pins.h](file:///P:/CDJ1000MK3-EMULATOR/src/CDJ1000MK3_Pins.h).
+All microcontroller pin definitions are isolated from the core library logic and maintained in a dedicated configuration file: [src/CDJ1000MK3_Pins.h](file:///P:/CDJ1000MK3-EMULATOR/src/CDJ1000MK3_Pins.h).
 
-### Tabel Pemetaan Pinout per Tipe Board
+### Board Mapping Table
 
-| Target Board | Pin SCLK (CDJ Pin 13) | Pin MISO/SOUT (CDJ Pin 14) | Pin MOSI/SIN (CDJ Pin 15) | Pin CS/XCS (CDJ Pin 16) | Level Tegangan |
+| Target Microcontroller | SCLK Pin (CDJ Pin 13) | MISO/SOUT Pin (CDJ Pin 14) | MOSI/SIN Pin (CDJ Pin 15) | CS/XCS Pin (CDJ Pin 16) | Operating Voltage |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Arduino Uno / Nano** | Pin 13 | Pin 12 | Pin 11 | Pin 10 | 5V Langsung |
-| **Arduino Pro Micro / Leonardo** | Pin 15 (SCK) | Pin 14 (MISO) | Pin 16 (MOSI) | Pin 10 (SS) | 5V Langsung |
-| **Arduino Mega 2560** | Pin 52 | Pin 50 | Pin 51 | Pin 53 | 5V Langsung |
-| **ESP32 (Standard VSPI)** | GPIO 18 | GPIO 19 | GPIO 23 | GPIO 5 | 3.3V (Wajib Shifter) |
-| **Teensy 3.2 / 4.0 / 4.1** | Pin 13 | Pin 12 | Pin 11 | Pin 10 | 3.3V (Wajib Shifter) |
-| **STM32 Blue Pill (SPI1)** | Pin PA5 | Pin PA6 | Pin PA7 | Pin PA4 | 3.3V (Wajib Shifter) |
-| **Raspberry Pi Pico (RP2040)** | GP18 | GP16 | GP19 | GP17 | 3.3V (Wajib Shifter) |
-| **Kustom (User Defined)** | Kustom | Kustom | Kustom | Kustom | Sesuai Konfigurasi |
+| **Arduino Uno / Nano** | Pin 13 | Pin 12 | Pin 11 | Pin 10 | 5V Direct |
+| **Arduino Pro Micro / Leonardo** | Pin 15 (SCK) | Pin 14 (MISO) | Pin 16 (MOSI) | Pin 10 (SS) | 5V Direct |
+| **Arduino Mega 2560** | Pin 52 | Pin 50 | Pin 51 | Pin 53 | 5V Direct |
+| **ESP32 (Standard VSPI)** | GPIO 18 | GPIO 19 | GPIO 23 | GPIO 5 | 3.3V (Shifter Required) |
+| **Teensy 3.2 / 4.0 / 4.1** | Pin 13 | Pin 12 | Pin 11 | Pin 10 | 3.3V (Shifter Required) |
+| **STM32 Blue Pill (SPI1)** | Pin PA5 | Pin PA6 | Pin PA7 | Pin PA4 | 3.3V (Shifter Required) |
+| **Raspberry Pi Pico (RP2040)** | GP18 | GP16 | GP19 | GP17 | 3.3V (Shifter Required) |
+| **Custom (User Defined)** | User Defined | User Defined | User Defined | User Defined | Per Configuration |
 
-### Cara Mengaktifkan Preset atau Pin Kustom
-Buka file `src/CDJ1000MK3_Pins.h`. Jika Anda tidak mendefinisikan apa pun, sistem akan melakukan **auto-detection** berdasarkan arsitektur toolchain Arduino IDE.
+### Enabling Presets or Custom Pins
+By default, the header uses architecture macros to **auto-detect** the board target during compilation.
 
-Untuk menentukan pin kustom secara manual:
+To specify custom pins manually:
 ```cpp
 #define CDJ_BOARD_CUSTOM
 #define CDJ_PIN_SCLK    13
@@ -317,152 +319,155 @@ Untuk menentukan pin kustom secara manual:
 
 ---
 
-## Spesifikasi Protokol Komunikasi SPI
+## SPI Communication Protocol Specification
 
-* **Mode SPI:** Mode 3.
-  * Clock Polarity (`CPOL`): 1 (Clock idle dalam kondisi logis HIGH).
-  * Clock Phase (`CPHA`): 1 (Data di-capture pada tepi kedua / trailing edge saat sinyal naik).
-* **Urutan Bit (Bit Order):** Most Significant Bit First (`MSBFIRST`).
-* **Kecepatan Sinyal Clock:** 1.0 MHz nominal (mendukung rentang 500 kHz hingga 2.0 MHz).
-* **Ukuran Transaksi Bingkai:** Tepat 27 Byte secara full-duplex per pertukaran.
-* **Peran SPI (Master vs Slave):**
-  * Pada unit CDJ-1000 MK3, microcontroller pada Display Board bertindak sebagai **SPI Master** yang membangkitkan clock dan sinyal seleksi `XCS`.
-  * Arduino/ESP32/Teensy yang disambungkan ke Display Board **wajib beroperasi sebagai SPI Slave**.
-* **Mekanisme Sinkronisasi Bingkai (Frame Sync):**
-  * Sinyal `XCS` mengalami transisi LOW saat transmisi 27-byte dimulai.
-  * Sinyal `XCS` mengalami transisi HIGH saat transmisi 27-byte berakhir.
-  * Driver menggunakan interupsi falling edge `XCS` untuk mereset indeks transmisi (`byteIndex = 0`), mencegah desinkronisasi bit/byte.
+* **SPI Mode:** Mode 3.
+  * Clock Polarity (`CPOL`): 1 (Clock idles in logic HIGH state).
+  * Clock Phase (`CPHA`): 1 (Data is sampled on the trailing/rising edge).
+* **Bit Order:** Most Significant Bit First (`MSBFIRST`).
+* **Clock Frequency:** 1.0 MHz nominal (operational range: 500 kHz to 2.0 MHz).
+* **Frame Size:** Exactly 27 Bytes per full-duplex transaction.
+* **SPI Role Assignment (Master vs. Slave):**
+  * The microprocessor on the CDJ-1000 MK3 Display Board operates as the **SPI Master**, driving SCLK and asserting `XCS`.
+  * Microcontrollers attached to the panel **must operate as an SPI Slave**.
+* **Frame Synchronization Protocol:**
+  * `XCS` transitions LOW when a 27-byte packet transaction begins.
+  * `XCS` transitions HIGH when the 27-byte transaction completes.
+  * The driver synchronizes using an `XCS` falling edge interrupt to reset the byte transmission counter (`byteIndex = 0`), preventing bit-level or byte-level framing drift.
 
 ---
 
-## Struktur Paket Data 27-Byte
+## 27-Byte Packet Data Structures
 
-### Paket Input: Display Board ke Main Assy (`Rbuffer`)
+### Input Packet: Display Board to Main Assy (`Rbuffer`)
 
-Panjang paket: 27 byte. Dikirim dari Display Board menuju Main Assy / Arduino.
+Packet size: 27 bytes. Transmitted from the Display Board to the Main Assy / Arduino.
 
-| Indeks Byte | Nama Bidang | Tipe / Resolusi | Keterangan Nilai |
+| Byte Index | Field Name | Type / Resolution | Description |
 | :---: | :--- | :---: | :--- |
-| `0` | Header 0 | `uint8_t` | Selalu bernilai konstan `0x01`. |
-| `1` | Header 1 | `uint8_t` | Selalu bernilai konstan `0x10`. |
-| `2` | ADC Touch/Brake | `uint8_t` | Nilai potensiometer Touch/Brake knob (`0..255`). |
-| `3` | ADC Release/Start | `uint8_t` | Nilai potensiometer Release/Start knob (`0..255`). |
-| `4` | ADC Pitch MSB | `uint8_t` | 8-bit MSB dari Fader Pitch (Resolusi total 14-bit: `0..16383`). |
-| `5` | ADC Pitch LSB | `uint8_t` | 6-bit atas berisi LSB dari Fader Pitch (`AAAAAA00`). |
-| `6` | ADC Center Pot MSB | `uint8_t` | 8-bit MSB dari potensiometer tengah pitch. |
-| `7` | ADC Center Pot LSB | `uint8_t` | 6-bit atas berisi LSB dari potensiometer tengah pitch. |
-| `8` | Jog Pulses MSB | `uint8_t` | MSB pencacah pulsa rotasi kumulatif (`0..65535`). 3600 pulsa per putaran penuh. |
-| `9` | Jog Pulses LSB | `uint8_t` | LSB pencacah pulsa rotasi kumulatif. |
-| `10` | Jog Speed MSB | `uint8_t` | MSB kecepatan rotasi kincir jog (`65535` saat platter berhenti). |
-| `11` | Jog Speed LSB | `uint8_t` | LSB kecepatan rotasi kincir jog. |
-| `12` | Jog & Switch Status | `uint8_t` | Bit 0: Eject Lock (`1`=Unlock, `0`=Lock)<br>Bit 1: Direction (`1`=Fwd, `0`=Rev)<br>Bit 4-5: Jog Touch Sensor (`1`=Tangan menyentuh platter)<br>Bit 6: Arah rotasi (`1`=Maju/CW, `0`=Mundur/CCW)<br>Bit 7: Deteksi kincir berputar (`1`=Berputar). |
-| `13` | Cadangan | `uint8_t` | Nilai `0x00`. |
-| `14` | Tombol Transport | `uint8_t` | Bit 0: PLAY<br>Bit 1: CUE<br>Bit 2: LOOP IN<br>Bit 3: LOOP OUT<br>Bit 4: RELOOP/EXIT<br>Bit 5: HOT CUE A<br>Bit 6: HOT CUE B<br>Bit 7: HOT CUE C. |
-| `15` | Cadangan | `uint8_t` | Nilai `0x00`. |
-| `16` | Tombol Pencarian | `uint8_t` | Bit 0: REC MODE<br>Bit 1: Track Search Reverse `<<`<br>Bit 2: Track Search Forward `>>`<br>Bit 3: Fast Search Reverse `<<`<br>Bit 4: Fast Search Forward `>>`. |
-| `17` | Tombol Mode/Tempo | `uint8_t` | Bit 0: MP3 Folder `<`<br>Bit 1: MP3 Folder `>`<br>Bit 2: JOG MODE (Vinyl/CDJ)<br>Bit 3: TEMPO (Rentang Pitch)<br>Bit 4: MASTER TEMPO<br>Bit 5: TEMPO RESET. |
-| `18` | Tombol Memori/Sistem| `uint8_t` | Bit 0: CALL `>`<br>Bit 1: `<` CALL<br>Bit 2: MEMORY<br>Bit 3: DELETE<br>Bit 4: EJECT<br>Bit 5: TIME MODE / AUTO CUE<br>Bit 6: TEXT MODE. |
-| `19` | Checksum Paket | `uint8_t` | Checksum verifikasi penerimaan. |
-| `20-26` | Status Ekor | `uint8_t[7]` | Pola data konstan: `0xF1, 0x64, 0x76, 0x00, 0x00, 0x00, 0x00`. |
+| `0` | Header 0 | `uint8_t` | Constant synchronization byte `0x01`. |
+| `1` | Header 1 | `uint8_t` | Constant synchronization byte `0x10`. |
+| `2` | ADC Touch/Brake | `uint8_t` | Potentiometer value for Touch/Brake knob (`0..255`). |
+| `3` | ADC Release/Start | `uint8_t` | Potentiometer value for Release/Start knob (`0..255`). |
+| `4` | ADC Pitch MSB | `uint8_t` | Upper 8 bits of 14-bit pitch fader (`0..16383`). |
+| `5` | ADC Pitch LSB | `uint8_t` | Upper 6 bits contain pitch fader LSB (`AAAAAA00`). |
+| `6` | ADC Center Pot MSB | `uint8_t` | Upper 8 bits of pitch center potentiometer. |
+| `7` | ADC Center Pot LSB | `uint8_t` | Upper 6 bits contain center potentiometer LSB. |
+| `8` | Jog Pulses MSB | `uint8_t` | Cumulative pulse counter MSB (`0..65535`, 3600 PPR). |
+| `9` | Jog Pulses LSB | `uint8_t` | Cumulative pulse counter LSB. |
+| `10` | Jog Speed MSB | `uint8_t` | Rotation speed MSB (`65535` when stopped). |
+| `11` | Jog Speed LSB | `uint8_t` | Rotation speed LSB. |
+| `12` | Jog & Switch Status | `uint8_t` | Bit 0: Eject Lock (`1`=Unlock, `0`=Lock)<br>Bit 1: Direction Switch (`1`=Forward, `0`=Reverse)<br>Bit 4-5: Jog Touch Sensor (`1`=Hand on platter)<br>Bit 6: Rotation Direction (`1`=CW, `0`=CCW)<br>Bit 7: Platter Rotation Detected (`1`=Moving). |
+| `13` | Reserved | `uint8_t` | Always `0x00`. |
+| `14` | Transport Buttons | `uint8_t` | Bit 0: PLAY<br>Bit 1: CUE<br>Bit 2: LOOP IN<br>Bit 3: LOOP OUT<br>Bit 4: RELOOP/EXIT<br>Bit 5: HOT CUE A<br>Bit 6: HOT CUE B<br>Bit 7: HOT CUE C. |
+| `15` | Reserved | `uint8_t` | Always `0x00`. |
+| `16` | Search Buttons | `uint8_t` | Bit 0: REC MODE<br>Bit 1: Track Search Reverse `<<`<br>Bit 2: Track Search Forward `>>`<br>Bit 3: Fast Search Reverse `<<`<br>Bit 4: Fast Search Forward `>>`. |
+| `17` | Navigation & Tempo Buttons | `uint8_t` | Bit 0: MP3 Folder `<`<br>Bit 1: MP3 Folder `>`<br>Bit 2: JOG MODE (Vinyl/CDJ)<br>Bit 3: TEMPO (Pitch Range)<br>Bit 4: MASTER TEMPO<br>Bit 5: TEMPO RESET. |
+| `18` | Memory & Utility Buttons | `uint8_t` | Bit 0: CALL `>`<br>Bit 1: `<` CALL<br>Bit 2: MEMORY<br>Bit 3: DELETE<br>Bit 4: EJECT<br>Bit 5: TIME MODE / AUTO CUE<br>Bit 6: TEXT MODE. |
+| `19` | Checksum / Status | `uint8_t` | Packet reception verification byte. |
+| `20-26` | Fixed Tail Signature | `uint8_t[7]` | Constant tail signature: `0xF1, 0x64, 0x76, 0x00, 0x00, 0x00, 0x00`. |
 
 ---
 
-### Paket Output: Main Assy ke Display Board (`Tbuffer`)
+### Output Packet: Main Assy to Display Board (`Tbuffer`)
 
-Main Assy mengirim siklus 8 paket (Paket 0 hingga 7). Paket 7 (`ID = 168 / 0xA8`) berisi status kontrol lampu LED dan indikator jog.
+The Main Assy sends an 8-packet cycle (Packages 0 through 7). Package 7 (`ID = 168 / 0xA8`) carries LED states and jog display feedback:
 
-| Indeks Byte | Deskripsi Bidang Paket 7 | Keterangan Nilai / Fungsi Bitmask |
+| Byte Index | Package 7 Field | Bitmask / Value Description |
 | :---: | :--- | :--- |
-| `0` | Identitas Paket | Nilai `168` (`0xA8`) menandakan Paket 7 (Status & LED). |
-| `1` | Tempo Digit 1 | Kode 7-segmen digit MSB persentase tempo. |
-| `2` | Tempo Digit 2 | Kode 7-segmen digit tengah persentase tempo. |
-| `3` | Tempo Digit 3 | Kode 7-segmen digit LSB persentase tempo. |
-| `4-5` | Indikator Frame Waktu | Kode 7-segmen frame waktu menit dan detik. |
-| `6-8` | Indikator BPM | Kode 7-segmen digit BPM lagu (MSB, Mid, LSB). |
-| `9` | Tanda Plus/Minus Tempo | Tanda `+` (`x11xxxxx`), `-` (`x10xxxxx`), atau spasi. |
-| `11` | Rentang Tempo VFD | `10010000` (+-6%), `10100000` (+-10%), `11000000` (+-16%), `10000000` (WIDE). |
-| `17` | LED Kontrol 1 | Bit 0: PLAY LED (Hijau)<br>Bit 1: CUE LED (Amber)<br>Bit 2: LOOP IN LED<br>Bit 3: LOOP OUT LED<br>Bit 4: RELOOP/EXIT LED<br>Bit 5: REVERSE LED (Merah)<br>Bit 6: HOT CUE A Merah<br>Bit 7: HOT CUE A Hijau. |
-| `18` | LED Kontrol 2 | Bit 0: HOT CUE A Oranye<br>Bit 1: HOT CUE B Merah<br>Bit 2: HOT CUE B Hijau<br>Bit 3: HOT CUE B Oranye<br>Bit 4: HOT CUE C Merah<br>Bit 5: HOT CUE C Hijau<br>Bit 6: HOT CUE C Oranye. |
-| `19` | LED Kontrol 3 | Bit 3: MASTER TEMPO LED (Merah)<br>Bit 4: TEMPO RESET LED (Hijau)<br>Bit 5: VINYL LED (Biru)<br>Bit 6: CDJ LED (Hijau)<br>Bit 7: SD CARD LED (Hijau). |
-| `21` | Kursor Cue Jog Display | Nilai posisi kursor Cue pada ring jog: `1..85` (`0` = Tanpa titik cue). |
-| `23` | Indikator Tabung VFD | Bit 3 & 4: Ikon Vinyl aktif<br>Bit 5: Lingkaran VFD sentuh aktif (*touch enable ring*). |
-| `25` | **Kursor Posisi Jog Ring** | **Nilai posisi ring melingkar: `1..135`**<br>`136` = Lingkaran penuh<br>`137` = Animasi disk load<br>`138` = Animasi disk eject. |
-| `26` | Checksum Paket Transmit | Checksum verifikasi pengiriman. |
+| `0` | Package Identifier | Value `168` (`0xA8`) designates Package 7 (Status & LEDs). |
+| `1` | Tempo Digit 1 | 7-segment encoding for tempo percentage MSB digit. |
+| `2` | Tempo Digit 2 | 7-segment encoding for tempo percentage middle digit. |
+| `3` | Tempo Digit 3 | 7-segment encoding for tempo percentage LSB digit. |
+| `4-5` | Time Display Digits | 7-segment encoding for minutes and seconds. |
+| `6-8` | BPM Display Digits | 7-segment encoding for track BPM (MSB, Mid, LSB). |
+| `9` | Tempo Sign | Sign indicator: `+` (`x11xxxxx`), `-` (`x10xxxxx`), or blank. |
+| `11` | VFD Tempo Range | `10010000` (+-6%), `10100000` (+-10%), `11000000` (+-16%), `10000000` (WIDE). |
+| `17` | LED Control 1 | Bit 0: PLAY LED (Green)<br>Bit 1: CUE LED (Amber)<br>Bit 2: LOOP IN LED<br>Bit 3: LOOP OUT LED<br>Bit 4: RELOOP/EXIT LED<br>Bit 5: REVERSE LED (Red)<br>Bit 6: HOT CUE A Red<br>Bit 7: HOT CUE A Green. |
+| `18` | LED Control 2 | Bit 0: HOT CUE A Orange<br>Bit 1: HOT CUE B Red<br>Bit 2: HOT CUE B Green<br>Bit 3: HOT CUE B Orange<br>Bit 4: HOT CUE C Red<br>Bit 5: HOT CUE C Green<br>Bit 6: HOT CUE C Orange. |
+| `19` | LED Control 3 | Bit 3: MASTER TEMPO LED (Red)<br>Bit 4: TEMPO RESET LED (Green)<br>Bit 5: VINYL LED (Blue)<br>Bit 6: CDJ LED (Green)<br>Bit 7: SD CARD LED (Green). |
+| `21` | Jog Display Cue Marker | Cue position on circular jog ring: `1..85` (`0` = No cue marker). |
+| `23` | VFD Center Indicators | Bit 3 & 4: "Vinyl ON" text on VFD lamp<br>Bit 5: "Touch Enable" center ring on VFD lamp. |
+| `25` | **Jog Ring Cursor Position** | **Circular jog ring cursor index: `1..135`**<br>`136` = Fill full circle<br>`137` = Disc loading animation<br>`138` = Disc eject animation. |
+| `26` | Transmit Checksum | Checksum verification byte. |
 
 ---
 
-### Algoritma Checksum (CRC)
+### Checksum Algorithm (CRC)
 
-Kedua arah paket data menggunakan algoritma penjumlahan aritmatika modulo 256.
+Packet transmission verification calculates an arithmetic sum modulo 256:
 
-#### 1. Checksum Pengiriman (Tx Checksum pada `Tbuffer[26]`)
-Menjumlahkan data dari byte indeks 1 sampai dengan byte indeks 25:
+#### 1. Transmit Checksum (Tx CRC on `Tbuffer[26]`)
+Sums bytes index 1 through index 25:
 $$\text{CRC}_{\text{TX}} = \left( \sum_{i=1}^{25} \text{Tbuffer}[i] \right) \pmod{256}$$
 
-#### 2. Checksum Penerimaan (Rx Checksum pada `Rbuffer[19]`)
-Menjumlahkan data dari byte indeks 1 sampai dengan byte indeks 18:
-$$\text{CRC}_{\text{RX}} = \left( \sum_{i=1}^{18} \text{Rbuffer}[i] \right) \pmod{256}$$
+#### 2. Double-Framing Signature Verification (Rx Frame Lock)
+Incoming frames from the Pioneer Display Board are validated against a dual-framing lock:
+* Header check: `Rbuffer[0] == 0x01` and `Rbuffer[1] == 0x10`.
+* Tail signature check: `Rbuffer[20] == 0xF1` (241), `Rbuffer[21] == 0x64` (100), and `Rbuffer[22] == 0x76` (118).
 
 ---
 
-## Referensi API Kelas Utama
+## Core Class API Reference
 
-### Kelas `CDJ1000MK3_Panel`
-Objek utama pengendali status panel atas CDJ-1000 MK3.
+### Class `CDJ1000MK3_Panel`
+The primary high-level interface for managing the CDJ-1000 MK3 panel.
 
 ```cpp
 #include "CDJ1000MK3.h"
 CDJ1000MK3_Panel cdj;
 ```
 
-#### Metode Inisialisasi & Siklus Utama
+#### Initialization & Update Loop
 * `bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS)`:  
-  Menginisialisasi antarmuka SPI hardware sesuai peran (Slave/Master) dan pin Chip Select yang dipilih.
+  Initializes hardware SPI in the selected role (Slave or Master) with the assigned Chip Select pin.
 * `bool update()`:  
-  Memeriksa keberadaan frame baru dari bus SPI, mem-parse status tombol, mendeteksi transisi perubahan (*edge changes*), dan memperbarui data balasan LED. Wajib dipanggil berulang di dalam fungsi `loop()`.
+  Checks for new SPI frames, parses button states, executes transition edge detection, and commits LED feedback frames. Must be called repeatedly inside `loop()`.
 
-#### Metode Registrasi Callback
+#### Event Callbacks
 * `void onButton(void (*cb)(CDJ_ButtonId_t btn, bool pressed))`:  
-  Mendaftarkan fungsi callback saat terjadi perubahan penekanan tombol.
+  Registers a callback function triggered on button press and release events.
 * `void onJog(void (*cb)(int16_t delta, bool touched, uint16_t speed))`:  
-  Mendaftarkan fungsi callback saat platter jog berputar atau disentuh.
+  Registers a callback function triggered on platter rotation or touch events.
 * `void onPitch(void (*cb)(uint16_t pitchValue))`:  
-  Mendaftarkan fungsi callback saat posisi fader pitch bergeser.
+  Registers a callback function triggered when the 14-bit pitch fader moves.
 
-#### Metode Pembacaan Input Status
-* `bool isPressed(CDJ_ButtonId_t btn) const`: Mengembalikan `true` jika tombol sedang ditahan.
-* `bool justPressed(CDJ_ButtonId_t btn) const`: Mengembalikan `true` tepat pada siklus saat tombol mulai ditekan.
-* `bool justReleased(CDJ_ButtonId_t btn) const`: Mengembalikan `true` tepat pada siklus saat tombol dilepaskan.
-* `bool isJogTouched() const`: Status sentuhan tangan pada permukaan metalik jog platter.
-* `int16_t getJogDelta() const`: Selisih jumlah pulsa encoder sejak pembacaan frame sebelumnya.
-* `uint16_t getJogPulses() const`: Nilai register pencacah pulsa kincir jog (`0..65535`).
-* `uint16_t getPitch() const`: Nilai ADC fader pitch resolusi 14-bit (`0..16383`, nilai tengah ~`8192`).
-* `uint8_t getTouchBrake() const`: Posisi knob Touch/Brake (`0..255`).
-* `uint8_t getReleaseStart() const`: Posisi knob Release/Start (`0..255`).
+#### Input Polling Methods
+* `bool isPressed(CDJ_ButtonId_t btn) const`: Returns `true` if the button is currently held down.
+* `bool justPressed(CDJ_ButtonId_t btn) const`: Returns `true` on the exact frame the button transition to pressed occurs.
+* `bool justReleased(CDJ_ButtonId_t btn) const`: Returns `true` on the exact frame the button transition to released occurs.
+* `bool isJogTouched() const`: Returns `true` when a hand is touching the metallic platter surface.
+* `int16_t getJogDelta() const`: Encoder pulse differential relative to the previous frame.
+* `uint16_t getJogPulses() const`: Raw 16-bit cumulative pulse register value (`0..65535`).
+* `uint16_t getPitch() const`: Raw 14-bit pitch fader ADC value (`0..16383`, center ~`8192`).
+* `uint8_t getTouchBrake() const`: Position of the Touch/Brake potentiometer knob (`0..255`).
+* `uint8_t getReleaseStart() const`: Position of the Release/Start potentiometer knob (`0..255`).
 
-#### Metode Kontrol Output LED & Display
-* `void setPlayLed(bool on)`: Mengatur status LED tombol Play (Hijau).
-* `void setCueLed(bool on)`: Mengatur status LED tombol Cue (Amber).
-* `void setLoopInLed(bool on)`: Mengatur status LED Loop In.
-* `void setLoopOutLed(bool on)`: Mengatur status LED Loop Out.
-* `void setHotCue(uint8_t cueIndex, CDJ_HotCueColor_t color)`: Mengatur warna Hot Cue A (`0`), B (`1`), atau C (`2`). Pilihan warna: `HOTCUE_OFF`, `HOTCUE_GREEN`, `HOTCUE_ORANGE`, `HOTCUE_RED`.
-* `void setVinylLed(bool on)`: Mengatur LED indikator mode Vinyl (Biru).
-* `void setCdjLed(bool on)`: Mengatur LED indikator mode CDJ (Hijau).
-* `void setJogPosition(uint8_t pos)`: Mengatur posisi LED kursor melingkar jog display (`1..135`).
-* `void setJogCuePosition(uint8_t cuePos)`: Mengatur posisi penanda cue pada jog display (`0..85`).
-* `void setTouchRing(bool on)`: Menyalakan atau mematikan visual lingkaran sentuh pada VFD tengah.
-* `void commitLeds()`: Menuliskan perubahan LED langsung ke frame transmisi SPI.
+#### Output & LED Control Methods
+* `void setPlayLed(bool on)`: Controls the Green Play/Pause LED.
+* `void setCueLed(bool on)`: Controls the Amber Cue LED.
+* `void setLoopInLed(bool on)`: Controls the Loop In LED.
+* `void setLoopOutLed(bool on)`: Controls the Loop Out LED.
+* `void setReloopExitLed(bool on)`: Controls the Reloop/Exit LED.
+* `void setReverseLed(bool on)`: Controls the Red Direction/Reverse LED.
+* `void setHotCue(uint8_t cueIndex, CDJ_HotCueColor_t color)`: Sets the color of Hot Cue A (`0`), B (`1`), or C (`2`). Available options: `HOTCUE_OFF`, `HOTCUE_GREEN`, `HOTCUE_ORANGE`, `HOTCUE_RED`.
+* `void setVinylLed(bool on)`: Controls the Blue Vinyl mode LED and updates the VFD vinyl indicator.
+* `void setCdjLed(bool on)`: Controls the Green CDJ mode LED.
+* `void setJogPosition(uint8_t pos)`: Sets the jog wheel outer ring cursor position (`1..135`).
+* `void setJogCuePosition(uint8_t cuePos)`: Sets the jog wheel cue position marker (`0..85`).
+* `void setTouchRing(bool on)`: Controls the VFD center platter touch ring indicator.
+* `void commitLeds()`: Immediately writes dirty LED states into the active SPI transmit buffer.
 
 ---
 
-## Panduan Penggunaan dan Contoh Aplikasi
+## Usage Guide and Application Examples
 
-### Contoh 1: Serial Monitor Diagnostic
+### Example 1: Serial Monitor Diagnostic
 
-Contoh ini membaca seluruh interaksi hardware fisik dan mencetak datanya ke Serial Monitor (baud rate 115200), serta menyediakan perintah terminal untuk menguji seluruh lampu LED panel.
+This example monitors all physical hardware inputs, prints telemetry to the Serial Monitor at 115200 baud, and allows testing panel LEDs via terminal commands.
 
-* **Path File:** [examples/CDJ1000MK3_Serial_Monitor/CDJ1000MK3_Serial_Monitor.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_Serial_Monitor/CDJ1000MK3_Serial_Monitor.ino)
-* **Board yang Didukung:** Arduino Uno, Nano, Mega 2560, Pro Micro, ESP32, Teensy, STM32.
+* **File Location:** [examples/CDJ1000MK3_Serial_Monitor/CDJ1000MK3_Serial_Monitor.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_Serial_Monitor/CDJ1000MK3_Serial_Monitor.ino)
+* **Supported Boards:** Arduino Uno, Nano, Mega 2560, Pro Micro, ESP32, Teensy, STM32.
 
 ```cpp
 #include <Arduino.h>
@@ -472,10 +477,10 @@ CDJ1000MK3_Panel cdj;
 
 void setup() {
     Serial.begin(115200);
-    cdj.begin(CDJ_ROLE_SLAVE); // Menggunakan pin dari CDJ1000MK3_Pins.h
+    cdj.begin(CDJ_ROLE_SLAVE); // Uses pins defined in CDJ1000MK3_Pins.h
 
     cdj.onButton([](CDJ_ButtonId_t btn, bool pressed) {
-        Serial.print("Tombol: ");
+        Serial.print("Button: ");
         Serial.print(CDJ1000MK3_Panel::getButtonName(btn));
         Serial.println(pressed ? " -> PRESSED" : " -> RELEASED");
     });
@@ -483,8 +488,8 @@ void setup() {
     cdj.onJog([](int16_t delta, bool touched, uint16_t speed) {
         Serial.print("Jog Delta: ");
         Serial.print(delta);
-        Serial.print(" | Sentuh: ");
-        Serial.println(touched ? "YA" : "TIDAK");
+        Serial.print(" | Touched: ");
+        Serial.println(touched ? "YES" : "NO");
     });
 }
 
@@ -495,41 +500,41 @@ void loop() {
 
 ---
 
-### Contoh 2: USB MIDI Controller untuk Rekordbox
+### Example 2: USB MIDI Controller for Rekordbox
 
-Mengubah panel CDJ-1000 MK3 menjadi konsol DJ MIDI dengan antarmuka native USB untuk mengendalikan software Rekordbox, Traktor, atau VirtualDJ secara real-time.
+Transforms the CDJ-1000 MK3 top panel into a native USB DJ MIDI controller for software like Pioneer Rekordbox, Traktor Pro, or VirtualDJ.
 
-* **Path Sketch:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino)
-* **File Mapping:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv)
-* **Board yang Direkomendasikan:** Arduino Pro Micro (ATmega32U4), Teensy 4.0/3.2, Raspberry Pi Pico (RP2040).
+* **Sketch Location:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino)
+* **Mapping File:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv)
+* **Recommended Boards:** Arduino Pro Micro (ATmega32U4), Teensy 4.0/3.2, Raspberry Pi Pico (RP2040).
 
-#### Prosedur Konfigurasi Rekordbox:
-1. Hubungkan board Arduino Pro Micro / Teensy ke port USB komputer.
-2. Buka software **Pioneer Rekordbox**.
-3. Di sudut kanan atas jendela Rekordbox, klik ikon **MIDI**.
-4. Pada jendela MIDI Setting, klik tombol **Import**.
-5. Pilih file [CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv).
-6. Rekordbox akan langsung mengenali mapping: tombol Play, Cue, Loop, Hot Cue A/B/C, Pitch Slider 14-bit resolusi tinggi, kursor rotasi, serta vinyl scratch saat platter disentuh.
-
----
-
-### Contoh 3: Main Board Hardware-in-the-Loop Emulator
-
-Mengemulasikan respon panel Display Board ke motherboard CDJ-1000 MK3 (*Main Assy*). Sangat berguna bagi teknisi perbaikan untuk menguji fungsionalitas mainboard, mekanisme transportasi CD drive, dan output audio tanpa perlu memasang panel fisik CDJ.
-
-* **Path Sketch:** [examples/CDJ1000MK3_MainBoard_Emulator/CDJ1000MK3_MainBoard_Emulator.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_MainBoard_Emulator/CDJ1000MK3_MainBoard_Emulator.ino)
-* **Karakteristik Operasional:** Mengoperasikan Arduino pada mode SPI Master dengan clock 1 MHz dan mengirimkan sinyal periodik 50 Hz ke konektor CN2002 motherboard untuk mencegah terjadinya kode kesalahan *E-8709* (*Communication Error*).
+#### Rekordbox Configuration Procedure:
+1. Connect the Arduino Pro Micro or Teensy to the computer via USB.
+2. Launch **Pioneer Rekordbox**.
+3. In the top-right corner of the Rekordbox window, click the **MIDI** icon.
+4. In the MIDI Setting window, click the **Import** button.
+5. Select the file [CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv).
+6. Rekordbox will immediately map all controls: Play, Cue, Loop, Hot Cues A/B/C, 14-bit high-resolution pitch slider, jog platter rotation, and touch scratch simulation.
 
 ---
 
-## Lisensi dan Kredit Riset
+### Example 3: Main Board Hardware-in-the-Loop Emulator
 
-Proyek ini dilisensikan di bawah **MIT License**. Teks lisensi lengkap dapat dibaca pada file [LICENSE](file:///P:/CDJ1000MK3-EMULATOR/LICENSE).
+Emulates the Display Board responses to the CDJ-1000 MK3 Main Assy motherboard. Essential for service technicians testing drive transports, power rails, and audio output stages without mounting the physical top panel.
 
-* **Hak Cipta:** (c) 2026 Hanif Bagus Saputra
-* **Repositori GitHub:** [https://github.com/rayocta303/cdj1000mk3-spi-bridge](https://github.com/rayocta303/cdj1000mk3-spi-bridge)
+* **Sketch Location:** [examples/CDJ1000MK3_MainBoard_Emulator/CDJ1000MK3_MainBoard_Emulator.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_MainBoard_Emulator/CDJ1000MK3_MainBoard_Emulator.ino)
+* **Operational Characteristics:** Configures the MCU as an SPI Master clocked at 1 MHz, transmitting periodic 50 Hz keep-alive frames to CN2002 to suppress *E-8709* (*Communication Error*) fault codes.
 
-### Kredit Riset & Dasar Protokol:
-Proyek ini mengintegrasikan dan menyempurnakan dokumentasi serta riset reverse-engineering yang dirintis oleh:
+---
+
+## License and Research Credits
+
+This project is licensed under the **MIT License**. For full terms, refer to the [LICENSE](file:///P:/CDJ1000MK3-EMULATOR/LICENSE) file.
+
+* **Copyright:** (c) 2026 Hanif Bagus Saputra
+* **GitHub Repository:** [https://github.com/rayocta303/cdj1000mk3-spi-bridge](https://github.com/rayocta303/cdj1000mk3-spi-bridge)
+
+### Protocol Research Credits:
+This project consolidates, optimizes, and refines reverse-engineering research originally pioneered by:
 1. **Andrei Anatsko** (*Reverse Engineering Pioneer CDJ-1000 serial protocol*).
 2. **vandoeselaar** (*CDJ-1000 mk3 for Rekordbox project*).
