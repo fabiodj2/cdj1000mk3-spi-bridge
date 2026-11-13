@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cdj1000mk3-spi-bridge | Pioneer CDJ-1000 MK3 Arduino & Embedded SPI Bridge</title>
+  <meta name="description" content="Technical documentation, SPI protocol specs, wiring schematics, and USB MIDI bridge for Pioneer CDJ-1000 MK3.">
+  <meta name="author" content="Hanif Bagus Saputra">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              blue: '#0088ff',
+              amber: '#f59e0b',
+              green: '#10b981',
+              dark: '#090d16',
+              card: '#111726',
+              border: '#1f293d',
+              surface: '#161e31'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Mermaid.js -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#111726',
+        primaryColor: '#161e31',
+        primaryTextColor: '#f3f4f6',
+        primaryBorderColor: '#0088ff',
+        lineColor: '#0088ff',
+        secondaryColor: '#1f293d',
+        tertiaryColor: '#090d16'
+      }
+    });
+  </script>
+
+  <style>
+    pre code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #1f293d;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #0088ff;
+    }
+  </style>
+</head>
+<body class="bg-[#090d16] text-gray-200 font-sans custom-scrollbar antialiased selection:bg-brand-blue selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-50 bg-[#090d16]/90 backdrop-blur-md border-b border-brand-border">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="inline-block w-3 h-3 rounded-full bg-brand-blue shadow-[0_0_8px_#0088ff]"></span>
+        <span class="text-lg font-bold text-white tracking-tight font-mono">cdj1000mk3-spi-bridge</span>
+        <span class="text-xs px-2 py-0.5 rounded border border-brand-blue/40 text-brand-blue font-mono font-medium">v1.0.0</span>
+      </div>
+      <div class="flex items-center space-x-6 text-sm">
+        <a href="#schematics" class="text-gray-400 hover:text-white transition">Schematics</a>
+        <a href="#pinout" class="text-gray-400 hover:text-white transition">Pinout Matrix</a>
+        <a href="#dfd" class="text-gray-400 hover:text-white transition">Data Flow</a>
+        <a href="#protocol" class="text-gray-400 hover:text-white transition">SPI Protocol</a>
+        <a href="#midi" class="text-gray-400 hover:text-white transition">Rekordbox MIDI</a>
+        <a href="https://github.com/rayocta303/cdj1000mk3-spi-bridge" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-md bg-brand-blue text-white font-medium hover:bg-blue-600 transition shadow-sm font-mono text-xs">GitHub Repo</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="py-16 sm:py-20 border-b border-brand-border bg-gradient-to-b from-[#111726]/40 to-transparent">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl">
+        <p class="text-xs uppercase tracking-widest text-brand-blue font-mono font-semibold mb-3">Open-Source Embedded Engineering</p>
+        <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+          Pioneer CDJ-1000 MK3 SPI Bridge & Controller Library
+        </h1>
+        <p class="mt-4 text-base sm:text-lg text-gray-400 leading-relaxed">
+          High-performance, modular Arduino and embedded C++ driver to interface physical Pioneer CDJ-1000 MK3 top panels. Reads all transport buttons, 3600 PPR jog wheels, and 14-bit pitch faders while controlling bi-directional LED feedbacks and 135-segment jog ring displays.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="#pinout" class="px-5 py-2.5 rounded-md bg-brand-blue text-white font-medium hover:bg-blue-600 transition font-mono text-xs shadow-md">Explore Pinout Matrix</a>
+          <a href="#schematics" class="px-5 py-2.5 rounded-md border border-brand-border bg-brand-surface text-gray-200 font-medium hover:border-gray-500 transition font-mono text-xs">Hardware Schematics</a>
+          <a href="CDJ1000MK3_Rekordbox.csv" download class="px-5 py-2.5 rounded-md border border-brand-amber/40 bg-brand-amber/10 text-brand-amber font-medium hover:bg-brand-amber/20 transition font-mono text-xs">Download Rekordbox CSV</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content Layout -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+      <!-- Sticky Table of Contents (Desktop Sidebar) -->
+      <aside class="hidden lg:block lg:col-span-1">
+        <div class="sticky top-24 space-y-1 text-sm border-l border-brand-border pl-4">
+          <p class="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider mb-2">Documentation</p>
+          <a href="#features" class="block py-1 text-gray-400 hover:text-brand-blue transition">Key Features</a>
+          <a href="#schematics" class="block py-1 text-gray-400 hover:text-brand-blue transition">Hardware Schematics</a>
+          <a href="#level-shifter" class="block py-1 pl-3 text-xs text-gray-500 hover:text-gray-300 transition">3.3V 74HC245 Wiring</a>
+          <a href="#pinout" class="block py-1 text-gray-400 hover:text-brand-blue transition">Pinout Matrix</a>
+          <a href="#dfd" class="block py-1 text-gray-400 hover:text-brand-blue transition">Data Flow Diagrams</a>
+          <a href="#protocol" class="block py-1 text-gray-400 hover:text-brand-blue transition">SPI Protocol Specs</a>
+          <a href="#packet-rx" class="block py-1 pl-3 text-xs text-gray-500 hover:text-gray-300 transition">Input Frame (Rbuffer)</a>
+          <a href="#packet-tx" class="block py-1 pl-3 text-xs text-gray-500 hover:text-gray-300 transition">Output Frame (Tbuffer)</a>
+          <a href="#api" class="block py-1 text-gray-400 hover:text-brand-blue transition">API Reference</a>
+          <a href="#midi" class="block py-1 text-gray-400 hover:text-brand-blue transition">Rekordbox Integration</a>
+          <a href="#author" class="block py-1 text-gray-400 hover:text-brand-blue transition">License & Credits</a>
+        </div>
+      </aside>
+
+      <!-- Main Documentation Column -->
+      <main class="lg:col-span-3 space-y-16">
+
+        <!-- Section: Key Features -->
+        <section id="features" class="space-y-4">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">Key Features</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div class="p-4 rounded-lg bg-brand-card border border-brand-border">
+              <h3 class="text-sm font-semibold text-white font-mono mb-1">High-Precision Jog Encoder</h3>
+              <p class="text-xs text-gray-400 leading-relaxed">Reads 3600 Pulses per Revolution (PPR) optical encoder with hardware direction detection and platter surface metallic touch sensing.</p>
+            </div>
+            <div class="p-4 rounded-lg bg-brand-card border border-brand-border">
+              <h3 class="text-sm font-semibold text-white font-mono mb-1">14-Bit Pitch Fader ADC</h3>
+              <p class="text-xs text-gray-400 leading-relaxed">Full 16384-step resolution with center-detent potentiometer monitoring and configurable deadband filter.</p>
+            </div>
+            <div class="p-4 rounded-lg bg-brand-card border border-brand-border">
+              <h3 class="text-sm font-semibold text-white font-mono mb-1">Full Bi-Directional LED Feedback</h3>
+              <p class="text-xs text-gray-400 leading-relaxed">Controls Play (Green), Cue (Amber), Loop In/Out, Tri-Color Hot Cues (Green/Orange/Red), Vinyl (Blue), and Master Tempo LEDs.</p>
+            </div>
+            <div class="p-4 rounded-lg bg-brand-card border border-brand-border">
+              <h3 class="text-sm font-semibold text-white font-mono mb-1">135-Step Jog Ring Cursor</h3>
+              <p class="text-xs text-gray-400 leading-relaxed">Precise rotary position updates (1..135 steps), 85-step Cue cursor, full circle fill, and native disc load/eject animations.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Hardware Schematics -->
+        <section id="schematics" class="space-y-6">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">Hardware Schematics</h2>
+          <p class="text-sm text-gray-400">
+            The Pioneer CDJ-1000 MK3 top panel (Display Board / DFLB) communicates via an internal 19-pin/20-pin ribbon connector (<code class="text-brand-blue">CN2002</code>).
+          </p>
+
+          <!-- 5V Direct Schematic -->
+          <div class="p-5 rounded-lg bg-brand-card border border-brand-border space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-semibold text-white font-mono">1. Direct 5V Connection (Arduino Uno, Nano, Mega, Pro Micro 5V)</h3>
+              <span class="text-xs px-2 py-0.5 rounded bg-brand-green/20 text-brand-green border border-brand-green/30 font-mono">No Level Shifter Needed</span>
+            </div>
+            <p class="text-xs text-gray-400">
+              When using a 5V ATmega-based Arduino, connect the 5 lines directly. CDJ logic operates natively at 5V TTL.
+            </p>
+            <div class="bg-brand-dark p-4 rounded border border-brand-border overflow-x-auto text-xs font-mono text-gray-300 leading-relaxed">
+<pre>PIONEER CDJ-1000 MK3 (CN2002)             ARDUINO 5V BOARD (Uno / Nano / Pro Micro / Mega)
++-----------------------------+          +----------------------------------------------+
+| Pin 13 : SCLK (SPI Clock)   |--------->| Pin SCK  (Uno: D13 / Pro Micro: D15 / Mega: D52)
+| Pin 14 : SOUT (Data from CDJ)|-------->| Pin MISO (Uno: D12 / Pro Micro: D14 / Mega: D50)
+| Pin 15 : SIN  (Data to CDJ) |<---------| Pin MOSI (Uno: D11 / Pro Micro: D16 / Mega: D51)
+| Pin 16 : XCS  (Chip Select) |--------->| Pin SS   (Uno: D10 / Pro Micro: D10 / Mega: D53)
+| Pin GND: Ground             |----------| Pin GND                                      |
++-----------------------------+          +----------------------------------------------+</pre>
+            </div>
+          </div>
+
+          <!-- 3.3V 74HC245 Schematic -->
+          <div id="level-shifter" class="p-5 rounded-lg bg-brand-card border border-brand-border space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-semibold text-white font-mono">2. 3.3V Connection with IC 74HC245 (ESP32, Teensy 4.x/3.x, STM32)</h3>
+              <span class="text-xs px-2 py-0.5 rounded bg-brand-amber/20 text-brand-amber border border-brand-amber/30 font-mono">Level Shifter Required</span>
+            </div>
+            <p class="text-xs text-gray-400">
+              For 3.3V microcontrollers, use a <strong>74HC245</strong> bus transceiver powered at 3.3V with passive RC noise filtering on the long ribbon cables.
+            </p>
+
+            <div class="bg-brand-dark p-4 rounded border border-brand-border overflow-x-auto text-xs font-mono text-gray-300 leading-relaxed">
+<pre>From CDJ-1000 MK3 (5V)                                               To ESP32 / Teensy (3.3V)
+ 
+                          +3.3V (From MCU 3V3 Pin)
+                            |
+                     +------+------+------+
+                     |      |      |      |
+                    [R1]   [R2]   [R3]   [C4]
+                    10K    10K    10K    1uF
+                     |      |      |      |
+                     |      |      |     GND
+                     |      |      |
+ CDJ Pin 14 (SOUT) --+------+-----------------> Pin 2  (A0)   (B0) Pin 18 --------> ESP32 GPIO 19 / Teensy Pin 12 (MISO)
+                     |             |
+                    [C1] 220pF     |
+                     |             |
+                    GND            |
+                                   |
+ CDJ Pin 16 (XCS)  ---------+------+----------> Pin 3  (A1)   (B1) Pin 17 --------> ESP32 GPIO 5  / Teensy Pin 10 (CS/SS)
+                            |      |
+                           [C2] 220pF
+                            |      |
+                           GND     |
+                                   |
+ CDJ Pin 13 (SCLK) ----------------+----------> Pin 4  (A2)   (B2) Pin 16 --------> ESP32 GPIO 18 / Teensy Pin 13 (SCK)
+                            |
+                           [C3] 220pF
+                            |
+                           GND
+ 
+                                 74HC245 Pinout Configuration:
+                                 Pin 1  (DIR / A->B) ---> +3.3V (Direction: Port A to Port B)
+                                 Pin 20 (VCC)        ---> +3.3V (From MCU 3.3V Rail)
+                                 Pin 19 (/OE)        ---> GND   (Output Enable Active Low)
+                                 Pin 10 (GND)        ---> GND   (Common Ground)
+ 
+                                 [R4] 470 Ohm Series Resistor
+ CDJ Pin 15 (SIN)  <-------------/\/\/\/\------------------------------------------ ESP32 GPIO 23 / Teensy Pin 11 (MOSI)
+ 
+ CDJ Ground (GND)  --------------------------------------------------------------- GND (Common Ground)</pre>
+            </div>
+
+            <!-- Bill of Materials Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse border border-brand-border">
+                <thead>
+                  <tr class="bg-brand-surface text-gray-300 font-mono">
+                    <th class="p-2.5 border border-brand-border">Component</th>
+                    <th class="p-2.5 border border-brand-border">Value</th>
+                    <th class="p-2.5 border border-brand-border">Qty (1 CDJ)</th>
+                    <th class="p-2.5 border border-brand-border">Purpose</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-brand-border text-gray-400 font-mono">
+                  <tr>
+                    <td class="p-2.5 border border-brand-border text-white">IC 74HC245</td>
+                    <td class="p-2.5 border border-brand-border">Octal Transceiver</td>
+                    <td class="p-2.5 border border-brand-border">1x</td>
+                    <td class="p-2.5 border border-brand-border">Level shifts 5V CDJ outputs safely down to 3.3V MCU inputs</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2.5 border border-brand-border text-white">Resistors R1-R3</td>
+                    <td class="p-2.5 border border-brand-border">10 kOhm</td>
+                    <td class="p-2.5 border border-brand-border">3x</td>
+                    <td class="p-2.5 border border-brand-border">Pull-up to 3.3V to ensure stable idle HIGH state for SPI Mode 3</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2.5 border border-brand-border text-white">Capacitors C1-C3</td>
+                    <td class="p-2.5 border border-brand-border">220 pF Ceramic</td>
+                    <td class="p-2.5 border border-brand-border">3x</td>
+                    <td class="p-2.5 border border-brand-border">Low-pass noise filter on ribbon cable lines (SCLK, SOUT, XCS)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2.5 border border-brand-border text-white">Resistor R4</td>
+                    <td class="p-2.5 border border-brand-border">470 Ohm</td>
+                    <td class="p-2.5 border border-brand-border">1x</td>
+                    <td class="p-2.5 border border-brand-border">Series current protection on SIN line (MCU 3.3V to CDJ 5V)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2.5 border border-brand-border text-white">Capacitor C4</td>
+                    <td class="p-2.5 border border-brand-border">1.0 uF Ceramic</td>
+                    <td class="p-2.5 border border-brand-border">1x</td>
+                    <td class="p-2.5 border border-brand-border">Decoupling capacitor between 74HC245 VCC (Pin 20) and GND</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Pinout Matrix -->
+        <section id="pinout" class="space-y-4">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">Microcontroller Pinout Matrix</h2>
+          <p class="text-sm text-gray-400">
+            Pin assignments are modularly separated in <code class="text-brand-blue font-mono">src/CDJ1000MK3_Pins.h</code>. The library automatically detects your compilation target.
+          </p>
+
+          <div class="overflow-x-auto rounded-lg border border-brand-border">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr class="bg-brand-surface text-gray-300 font-mono">
+                  <th class="p-3 border-b border-brand-border">Target Board</th>
+                  <th class="p-3 border-b border-brand-border">SCLK (Pin 13)</th>
+                  <th class="p-3 border-b border-brand-border">SOUT/MISO (Pin 14)</th>
+                  <th class="p-3 border-b border-brand-border">SIN/MOSI (Pin 15)</th>
+                  <th class="p-3 border-b border-brand-border">XCS/CS (Pin 16)</th>
+                  <th class="p-3 border-b border-brand-border">Logic Voltage</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-brand-border font-mono text-gray-400 bg-brand-card">
+                <tr class="hover:bg-brand-surface/40 transition">
+                  <td class="p-3 text-white font-semibold">Arduino Uno / Nano</td>
+                  <td class="p-3">Pin 13</td>
+                  <td class="p-3">Pin 12</td>
+                  <td class="p-3">Pin 11</td>
+                  <td class="p-3">Pin 10</td>
+                  <td class="p-3 text-brand-green">5V (Direct)</td>
+                </tr>
+                <tr class="hover:bg-brand-surface/40 transition">
+                  <td class="p-3 text-white font-semibold">Arduino Pro Micro (32U4)</td>
+                  <td class="p-3">Pin 15 (SCK)</td>
+                  <td class="p-3">Pin 14 (MISO)</td>
+                  <td class="p-3">Pin 16 (MOSI)</td>
+                  <td class="p-3">Pin 10 (SS)</td>
+                  <td class="p-3 text-brand-green">5V (Direct - Native USB)</td>
+                </tr>
+                <tr class="hover:bg-brand-surface/40 transition">
+                  <td class="p-3 text-white font-semibold">Arduino Mega 2560</td>
+                  <td class="p-3">Pin 52</td>
+                  <td class="p-3">Pin 50</td>
+                  <td class="p-3">Pin 51</td>
+                  <td class="p-3">Pin 53</td>
+                  <td class="p-3 text-brand-green">5V (Direct)</td>
+                </tr>
+                <tr class="hover:bg-brand-surface/40 transition">
+                  <td class="p-3 text-white font-semibold">ESP32 (Standard VSPI)</td>
+                  <td class="p-3">GPIO 18</td>
+                  <td class="p-3">GPIO 19</td>
+                  <td class="p-3">GPIO 23</td>
+                  <td class="p-3">GPIO 5</td>
+                  <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
+                </tr>
+                <tr class="hover:bg-brand-surface/40 transition">
+                  <td class="p-3 text-white font-semibold">Teensy 4.0 / 4.1 / 3.2</td>
+                  <td class="p-3">Pin 13</td>
+                  <td class="p-3">Pin 12</td>
+                  <td class="p-3">Pin 11</td>
+                  <td class="p-3">Pin 10</td>
+                  <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
+                </tr>
+                <tr class="hover:bg-brand-surface/40 transition">
+                  <td class="p-3 text-white font-semibold">STM32 Blue Pill (SPI1)</td>
+                  <td class="p-3">PA5</td>
+                  <td class="p-3">PA6</td>
+                  <td class="p-3">PA7</td>
+                  <td class="p-3">PA4</td>
+                  <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
+                </tr>
+                <tr class="hover:bg-brand-surface/40 transition">
+                  <td class="p-3 text-white font-semibold">Raspberry Pi Pico (RP2040)</td>
+                  <td class="p-3">GP18</td>
+                  <td class="p-3">GP16</td>
+                  <td class="p-3">GP19</td>
+                  <td class="p-3">GP17</td>
+                  <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Section: Data Flow Diagrams -->
+        <section id="dfd" class="space-y-6">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">Data Flow Diagrams (DFD)</h2>
+          
+          <div class="space-y-3">
+            <h3 class="text-base font-semibold text-white font-mono">Level 0: System Context Diagram</h3>
+            <div class="p-4 rounded-lg bg-brand-card border border-brand-border">
+              <pre class="mermaid text-center">
+flowchart LR
+    CDJ["Physical CDJ-1000 MK3 Panel"]
+    SYS["cdj1000mk3-spi-bridge (MCU Emulator)"]
+    HOST["Host PC / Rekordbox DJ Software"]
+
+    CDJ -- "SPI Clock & Data (SCLK, XCS, SOUT)" --> SYS
+    SYS -- "SPI Responses (SIN - LEDs, Jog Cursor)" --> CDJ
+    
+    SYS -- "USB MIDI Events (Note On/Off, Pitch CC, Jog CC)" --> HOST
+    HOST -- "MIDI Output Feedback (LED States)" --> SYS
+              </pre>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <h3 class="text-base font-semibold text-white font-mono">Level 1: Functional Decomposition Diagram</h3>
+            <div class="p-4 rounded-lg bg-brand-card border border-brand-border overflow-x-auto">
+              <pre class="mermaid">
+flowchart TD
+    subgraph HW["Physical Interface"]
+        SCLK["SCLK & XCS Transitions"]
+        SOUT["SOUT Serial Stream"]
+        SIN["SIN Serial Line"]
+    end
+
+    subgraph CORE["Firmware Engine"]
+        P1["1.0 SPI Slave ISR & XCS Frame Sync"]
+        P2["2.0 Checksum Verification (Rx CRC)"]
+        P3["3.0 Frame Parser (Buttons, ADC, Jog)"]
+        P4["4.0 Button State Engine & Edge Detector"]
+        P5["5.0 Jog Wheel Tracking & Delta Accumulator"]
+        P6["6.0 Pitch Fader ADC 14-Bit Normalization"]
+        P7["7.0 Package 7 Builder & LED Multiplexer"]
+        P8["8.0 Transmit Checksum Calculation (Tx CRC)"]
+    end
+
+    subgraph STORES["Data Stores"]
+        D1[("Raw SPI Buffer 27-Byte")]
+        D2[("Panel State Record")]
+        D3[("Tx Package 7 Buffer")]
+    end
+
+    subgraph COMM["Host Communication"]
+        P9["9.0 USB MIDI Protocol Adapter"]
+        P10["10.0 Serial Diagnostic Terminal"]
+    end
+
+    SCLK --> P1
+    SOUT --> P1
+    P1 --> D1
+    D1 --> P2
+    P2 --> P3
+    P3 --> D2
+
+    D2 --> P4
+    D2 --> P5
+    D2 --> P6
+
+    P4 -. "LED Trigger" .-> P7
+    P5 -. "Jog Cursor" .-> P7
+    P7 --> P8
+    P8 --> D3
+    D3 --> P1
+    P1 --> SIN
+
+    P4 --> P9
+    P5 --> P9
+    P6 --> P9
+    P4 --> P10
+    P5 --> P10
+    P6 --> P10
+              </pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: SPI Protocol Specs -->
+        <section id="protocol" class="space-y-6">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">SPI Protocol Specifications</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            <div class="p-3 rounded bg-brand-card border border-brand-border">
+              <span class="text-gray-400 block">SPI Mode</span>
+              <span class="text-white font-bold text-sm">Mode 3 (CPOL=1, CPHA=1)</span>
+            </div>
+            <div class="p-3 rounded bg-brand-card border border-brand-border">
+              <span class="text-gray-400 block">Clock Frequency</span>
+              <span class="text-white font-bold text-sm">1.0 MHz (500kHz-2MHz)</span>
+            </div>
+            <div class="p-3 rounded bg-brand-card border border-brand-border">
+              <span class="text-gray-400 block">Frame Size</span>
+              <span class="text-white font-bold text-sm">27 Bytes Full-Duplex</span>
+            </div>
+            <div class="p-3 rounded bg-brand-card border border-brand-border">
+              <span class="text-gray-400 block">Bit Order</span>
+              <span class="text-white font-bold text-sm">MSB First</span>
+            </div>
+          </div>
+
+          <!-- Rx Packet Table -->
+          <div id="packet-rx" class="space-y-2">
+            <h3 class="text-sm font-semibold text-white font-mono">Display Board to Main Assy Input Packet (Rbuffer)</h3>
+            <div class="overflow-x-auto rounded border border-brand-border text-xs">
+              <table class="w-full text-left font-mono">
+                <thead class="bg-brand-surface text-gray-300">
+                  <tr>
+                    <th class="p-2 border-b border-brand-border">Byte</th>
+                    <th class="p-2 border-b border-brand-border">Field</th>
+                    <th class="p-2 border-b border-brand-border">Resolution</th>
+                    <th class="p-2 border-b border-brand-border">Bitmask / Description</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-brand-border bg-brand-card text-gray-400">
+                  <tr>
+                    <td class="p-2 text-white">0..1</td>
+                    <td class="p-2">Header</td>
+                    <td class="p-2">uint8_t[2]</td>
+                    <td class="p-2">Constant 0x01, 0x10</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">2..3</td>
+                    <td class="p-2">Touch/Brake, Release/Start</td>
+                    <td class="p-2">8-bit ADC</td>
+                    <td class="p-2">Knob positions (0..255)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">4..5</td>
+                    <td class="p-2">Pitch Fader</td>
+                    <td class="p-2">14-bit ADC</td>
+                    <td class="p-2">Byte 4 = MSB, Byte 5 = LSB (0..16383, center ~8192)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">8..9</td>
+                    <td class="p-2">Jog Pulses Counter</td>
+                    <td class="p-2">16-bit</td>
+                    <td class="p-2">0..65535 (3600 pulses per 1 full 360-deg rotation)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">12</td>
+                    <td class="p-2">Jog Status & Switches</td>
+                    <td class="p-2">Bitmask</td>
+                    <td class="p-2">b0=Eject Lock, b1=Direction, b4/b5=Jog Platter Touch, b6=Rotation Direction, b7=Platter Rotating</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">14</td>
+                    <td class="p-2">Transport Buttons</td>
+                    <td class="p-2">Bitmask</td>
+                    <td class="p-2">b0=PLAY, b1=CUE, b2=LOOP IN, b3=LOOP OUT, b4=RELOOP/EXIT, b5-b7=HOT CUE A/B/C</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">16</td>
+                    <td class="p-2">Search Buttons</td>
+                    <td class="p-2">Bitmask</td>
+                    <td class="p-2">b0=REC MODE, b1=Track <<, b2=Track >>, b3=Search <<, b4=Search >></td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">17</td>
+                    <td class="p-2">Mode & Tempo Buttons</td>
+                    <td class="p-2">Bitmask</td>
+                    <td class="p-2">b0=Folder <, b1=Folder >, b2=JOG MODE, b3=TEMPO, b4=MASTER TEMPO, b5=TEMPO RESET</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">18</td>
+                    <td class="p-2">Memory Buttons</td>
+                    <td class="p-2">Bitmask</td>
+                    <td class="p-2">b0=CALL >, b1=< CALL, b2=MEMORY, b3=DELETE, b4=EJECT, b5=TIME MODE, b6=TEXT MODE</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">19</td>
+                    <td class="p-2">Rx Checksum</td>
+                    <td class="p-2">uint8_t</td>
+                    <td class="p-2">Sum of bytes 1..18 modulo 256</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tx Packet Table -->
+          <div id="packet-tx" class="space-y-2">
+            <h3 class="text-sm font-semibold text-white font-mono">Main Assy to Display Board Feedback Packet 7 (Tbuffer)</h3>
+            <div class="overflow-x-auto rounded border border-brand-border text-xs">
+              <table class="w-full text-left font-mono">
+                <thead class="bg-brand-surface text-gray-300">
+                  <tr>
+                    <th class="p-2 border-b border-brand-border">Byte</th>
+                    <th class="p-2 border-b border-brand-border">Field</th>
+                    <th class="p-2 border-b border-brand-border">Function & Bitmask</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-brand-border bg-brand-card text-gray-400">
+                  <tr>
+                    <td class="p-2 text-white">0</td>
+                    <td class="p-2">Package ID</td>
+                    <td class="p-2">Constant 168 (0xA8) indicates Status & LED Package</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">17</td>
+                    <td class="p-2">Primary LEDs</td>
+                    <td class="p-2">b0=PLAY, b1=CUE, b2=LOOP IN, b3=LOOP OUT, b4=RELOOP, b5=REVERSE, b6=HOT CUE A Red, b7=HOT CUE A Green</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">18</td>
+                    <td class="p-2">Hot Cue LEDs</td>
+                    <td class="p-2">b0=A Orange, b1=B Red, b2=B Green, b3=B Orange, b4=C Red, b5=C Green, b6=C Orange</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">19</td>
+                    <td class="p-2">System LEDs</td>
+                    <td class="p-2">b3=MASTER TEMPO, b4=TEMPO RESET, b5=VINYL Blue, b6=CDJ Green, b7=SD CARD</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">21</td>
+                    <td class="p-2">Jog Cue Cursor</td>
+                    <td class="p-2">Position index 1..85 on inner ring (0 = off)</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">23</td>
+                    <td class="p-2">VFD Indicators</td>
+                    <td class="p-2">b3/b4=Vinyl active icon, b5=Center circle touch ring indicator</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">25</td>
+                    <td class="p-2">Jog Ring Cursor</td>
+                    <td class="p-2">1..135 circular position, 136=fill circle, 137=load animation, 138=eject animation</td>
+                  </tr>
+                  <tr>
+                    <td class="p-2 text-white">26</td>
+                    <td class="p-2">Tx Checksum</td>
+                    <td class="p-2">Sum of bytes 1..25 modulo 256</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: API Reference -->
+        <section id="api" class="space-y-4">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">API Reference</h2>
+          <div class="bg-brand-card p-5 rounded-lg border border-brand-border space-y-4 text-xs font-mono">
+            <div>
+              <p class="text-brand-blue font-bold">#include "CDJ1000MK3.h"</p>
+              <p class="text-gray-400">CDJ1000MK3_Panel cdj;</p>
+            </div>
+            <div class="space-y-2 border-t border-brand-border pt-3">
+              <p class="text-white font-semibold">Lifecycle Methods:</p>
+              <p class="text-gray-300">cdj.begin(CDJ_ROLE_SLAVE); <span class="text-gray-500">// Initializes SPI with pins from CDJ1000MK3_Pins.h</span></p>
+              <p class="text-gray-300">cdj.update(); <span class="text-gray-500">// Must be called in void loop() to process frames</span></p>
+            </div>
+            <div class="space-y-2 border-t border-brand-border pt-3">
+              <p class="text-white font-semibold">Event Callbacks:</p>
+              <p class="text-gray-300">cdj.onButton([](CDJ_ButtonId_t btn, bool pressed) { ... });</p>
+              <p class="text-gray-300">cdj.onJog([](int16_t delta, bool touched, uint16_t speed) { ... });</p>
+              <p class="text-gray-300">cdj.onPitch([](uint16_t pitchValue) { ... });</p>
+            </div>
+            <div class="space-y-2 border-t border-brand-border pt-3">
+              <p class="text-white font-semibold">LED & Visual Feedback Controls:</p>
+              <p class="text-gray-300">cdj.setPlayLed(true); <span class="text-gray-500">// Play green LED</span></p>
+              <p class="text-gray-300">cdj.setCueLed(true); <span class="text-gray-500">// Cue amber LED</span></p>
+              <p class="text-gray-300">cdj.setHotCue(0, HOTCUE_GREEN); <span class="text-gray-500">// 0=A, 1=B, 2=C (HOTCUE_OFF/GREEN/ORANGE/RED)</span></p>
+              <p class="text-gray-300">cdj.setJogPosition(pos); <span class="text-gray-500">// 1..135 ring position</span></p>
+              <p class="text-gray-300">cdj.setTouchRing(true); <span class="text-gray-500">// Center VFD touch ring visual</span></p>
+              <p class="text-gray-300">cdj.commitLeds(); <span class="text-gray-500">// Pushes modified state to transmit SPI buffer</span></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Rekordbox MIDI Integration -->
+        <section id="midi" class="space-y-4">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">Rekordbox MIDI Integration</h2>
+          <p class="text-sm text-gray-400">
+            Convert your physical CDJ-1000 MK3 top panel into a plug-and-play USB MIDI Controller using an Arduino Pro Micro (ATmega32U4), Teensy, or RP2040.
+          </p>
+          <div class="p-5 rounded-lg bg-brand-card border border-brand-border space-y-3">
+            <h3 class="text-sm font-semibold text-white font-mono">1-Minute Setup Procedure:</h3>
+            <ol class="list-decimal list-inside text-xs text-gray-300 space-y-2 font-mono">
+              <li>Upload <code class="text-brand-blue">examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino</code> to your board.</li>
+              <li>Plug your Arduino USB into your PC / Mac. It will enumerate natively as a USB MIDI Controller.</li>
+              <li>Open <strong>Pioneer Rekordbox</strong>, click <strong>MIDI</strong> in the top-right toolbar.</li>
+              <li>Click <strong>Import</strong> and select the mapping file: <a href="CDJ1000MK3_Rekordbox.csv" download class="text-brand-blue underline font-bold">CDJ1000MK3_Rekordbox.csv</a>.</li>
+              <li>Your physical CDJ-1000 MK3 buttons, 14-bit pitch slider, vinyl touch, and scratching now directly control Rekordbox Deck 1/2.</li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- Section: License & Credits -->
+        <section id="author" class="space-y-4 border-t border-brand-border pt-8">
+          <h2 class="text-xl font-bold text-white">License & Research Credits</h2>
+          <p class="text-xs text-gray-400 leading-relaxed">
+            This project is open-source software licensed under the <a href="https://github.com/rayocta303/cdj1000mk3-spi-bridge/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" class="text-brand-blue underline">MIT License</a>.<br>
+            Developed and maintained by <strong>Hanif Bagus Saputra</strong> (<a href="https://github.com/rayocta303" target="_blank" rel="noopener noreferrer" class="text-brand-blue hover:underline">@rayocta303</a>).
+          </p>
+          <p class="text-xs text-gray-500 leading-relaxed">
+            Built upon pioneering reverse-engineering research by <strong>Andrei Anatsko</strong> (CDJ-1000 serial protocol documentation) and <strong>vandoeselaar</strong> (CDJ-1000 MK3 for Rekordbox).
+          </p>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-brand-border bg-[#070a10] py-8 text-center text-xs text-gray-500 font-mono">
+    <div class="max-w-7xl mx-auto px-4">
+      <p>cdj1000mk3-spi-bridge &copy; 2026 Hanif Bagus Saputra. Released under the MIT License.</p>
+      <p class="mt-1">Pioneer and CDJ are registered trademarks of AlphaTheta / Pioneer Corporation. This independent open-source project is not affiliated with Pioneer DJ.</p>
+    </div>
+  </footer>
+
+</body>
+</html>
