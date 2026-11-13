@@ -10,7 +10,9 @@ CDJ1000MK3_SPI* g_pCDJ_SPI = nullptr;
 // Internal ring/ping-pong buffers for interrupt-safe data exchange
 static volatile uint8_t s_rxBuf[CDJ_FRAME_SIZE];
 static volatile uint8_t s_rxCompleted[CDJ_FRAME_SIZE];
-static volatile uint8_t s_txBuf[CDJ_FRAME_SIZE];
+static volatile uint8_t s_txPackages[8][CDJ_FRAME_SIZE];
+static volatile uint8_t s_numTxPackages = 1;
+static volatile uint8_t s_currentPkgIdx = 0;
 static volatile uint8_t s_byteIdx = 0;
 static volatile bool    s_frameReady = false;
 static uint8_t          s_csPinInternal = CDJ_PIN_CS;
@@ -28,7 +30,7 @@ static inline void handleCsTransition(uint8_t csState) {
     if (csState == LOW) {
         // Frame start: Reset byte counter and preload first transmit byte
         s_byteIdx = 0;
-        SPDR = s_txBuf[0];
+        SPDR = s_txPackages[s_currentPkgIdx][0];
     } else {
         // Frame end: Rising edge indicates 27-byte packet transmission complete
         if (s_byteIdx >= 25) { // Received at least 25-27 bytes
@@ -38,7 +40,15 @@ static inline void handleCsTransition(uint8_t csState) {
             s_frameReady = true;
         }
         s_byteIdx = 0;
-        SPDR = s_txBuf[0]; // Preload for start of next frame
+
+        // Advance to next package in cycle (0..s_numTxPackages - 1)
+        if (s_numTxPackages > 1) {
+            s_currentPkgIdx = (s_currentPkgIdx + 1) % s_numTxPackages;
+        } else {
+            s_currentPkgIdx = 0;
+        }
+
+        SPDR = s_txPackages[s_currentPkgIdx][0]; // Preload for start of next frame
     }
 }
 
@@ -66,17 +76,17 @@ ISR(SPI_STC_vect) {
         s_rxBuf[s_byteIdx] = inByte;
         s_byteIdx++;
         if (s_byteIdx < CDJ_FRAME_SIZE) {
-            SPDR = s_txBuf[s_byteIdx];
+            SPDR = s_txPackages[s_currentPkgIdx][s_byteIdx];
         } else {
             // Frame complete! All 27 bytes received
             for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
                 s_rxCompleted[i] = s_rxBuf[i];
             }
             s_frameReady = true;
-            SPDR = s_txBuf[0]; // Reset preload for next packet
+            SPDR = s_txPackages[s_currentPkgIdx][0]; // Reset preload for next packet
         }
     } else {
-        SPDR = s_txBuf[0];
+        SPDR = s_txPackages[s_currentPkgIdx][0];
     }
 }
 #else
@@ -101,7 +111,22 @@ CDJ1000MK3_SPI::CDJ1000MK3_SPI()
     g_pCDJ_SPI = this;
     memset((void*)s_rxBuf, 0, CDJ_FRAME_SIZE);
     memset((void*)s_rxCompleted, 0, CDJ_FRAME_SIZE);
-    CDJ_InitTxPackage7((uint8_t*)s_txBuf);
+
+    // Initialize all 8 packages with standard Pioneer headers (0, 24, 48, 72, 96, 120, 144, 168)
+    const uint8_t pkgHeaders[8] = { 0, 24, 48, 72, 96, 120, 144, 168 };
+    for (uint8_t p = 0; p < 8; p++) {
+        memset((void*)s_txPackages[p], 0, CDJ_FRAME_SIZE);
+        s_txPackages[p][0] = pkgHeaders[p];
+        s_txPackages[p][25] = 1; // Default jog ring position
+        s_txPackages[p][26] = CDJ_CalculateTxChecksum((const uint8_t*)s_txPackages[p]);
+    }
+
+    // Package 7 default template
+    CDJ_InitTxPackage7((uint8_t*)s_txPackages[7]);
+    // Also copy to package 0 as single-package fallback
+    CDJ_InitTxPackage7((uint8_t*)s_txPackages[0]);
+    s_numTxPackages = 1;
+    s_currentPkgIdx = 0;
 }
 
 bool CDJ1000MK3_SPI::begin(CDJ_SpiRole_t role, uint8_t csPin, uint32_t clockSpeed) {
@@ -122,7 +147,7 @@ bool CDJ1000MK3_SPI::begin(CDJ_SpiRole_t role, uint8_t csPin, uint32_t clockSpee
         pinMode(_csPin, INPUT_PULLUP);
 
         // Preload first byte into SPDR
-        SPDR = s_txBuf[0];
+        SPDR = s_txPackages[0][0];
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
         if (_csPin == 10) {
@@ -225,16 +250,41 @@ void CDJ1000MK3_SPI::getRxFrame(uint8_t *dest) {
 
 void CDJ1000MK3_SPI::setTxFrame(const uint8_t *src) {
     if (!src) return;
+    setTxPackage(s_numTxPackages > 1 ? 7 : 0, src);
+}
+
+void CDJ1000MK3_SPI::setTxPackage(uint8_t pkgIndex, const uint8_t *src) {
+    if (!src || pkgIndex >= 8) return;
 #if defined(__AVR__)
     uint8_t oldSreg = SREG;
     cli();
 #endif
     for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
-        s_txBuf[i] = src[i];
+        s_txPackages[pkgIndex][i] = src[i];
     }
 #if defined(ESP32)
     memcpy(s_esp32_tx, src, CDJ_FRAME_SIZE);
 #endif
+#if defined(__AVR__)
+    SREG = oldSreg;
+#endif
+}
+
+void CDJ1000MK3_SPI::setNumTxPackages(uint8_t numPkgs) {
+    if (numPkgs < 1) numPkgs = 1;
+    if (numPkgs > 8) numPkgs = 8;
+    s_numTxPackages = numPkgs;
+}
+
+void CDJ1000MK3_SPI::updateAllPackagesJogPosition(uint8_t pos) {
+#if defined(__AVR__)
+    uint8_t oldSreg = SREG;
+    cli();
+#endif
+    for (uint8_t p = 0; p < 8; p++) {
+        s_txPackages[p][25] = pos;
+        s_txPackages[p][26] = CDJ_CalculateTxChecksum((const uint8_t*)s_txPackages[p]);
+    }
 #if defined(__AVR__)
     SREG = oldSreg;
 #endif

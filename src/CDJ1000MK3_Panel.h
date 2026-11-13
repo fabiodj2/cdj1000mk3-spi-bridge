@@ -87,6 +87,14 @@ public:
     void setTouchRing(bool on);               // Center VFD circle on touch
     void setTrackDisplay(uint8_t trackNumber); // 1..99 track number on 7-segment display
 
+    // Display & Multi-Package Controls
+    void enableMultiPackageMode(bool enable); // 8-package full screen refresh (Waveform, Text, Time, LEDs)
+    void setCustomText(const char* text);    // Display up to 16 ASCII characters on VFD Dot-Matrix (Package 6)
+    void setWaveform(const uint8_t* bars100); // 100 bars across the display (Package 0..4)
+    void setRandomWaveform();                // Generate dynamic random music wave
+    void setTimeDisplay(uint8_t minutes, uint8_t seconds, uint8_t frames);
+    void setTempoDisplay(float pitchPercent);
+
     // Push pending LED/display changes immediately to SPI transmit frame
     void commitLeds();
 

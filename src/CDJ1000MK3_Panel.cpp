@@ -234,6 +234,7 @@ void CDJ1000MK3_Panel::setSdCardLed(bool on) {
 
 void CDJ1000MK3_Panel::setJogPosition(uint8_t pos) {
     CDJ_SetTxJogRing(_txRaw, pos, _txRaw[21]);
+    _spi.updateAllPackagesJogPosition(pos);
     _txDirty = true;
 }
 
@@ -249,6 +250,120 @@ void CDJ1000MK3_Panel::setTouchRing(bool on) {
 
 void CDJ1000MK3_Panel::setTrackDisplay(uint8_t trackNumber) {
     CDJ_SetTxTrackDisplay(_txRaw, trackNumber);
+    _txDirty = true;
+}
+
+void CDJ1000MK3_Panel::enableMultiPackageMode(bool enable) {
+    _spi.setNumTxPackages(enable ? 8 : 1);
+}
+
+void CDJ1000MK3_Panel::setCustomText(const char* text) {
+    if (!text) return;
+    uint8_t pkg6[CDJ_FRAME_SIZE];
+    memset(pkg6, 0, CDJ_FRAME_SIZE);
+    pkg6[0] = 144; // Package 6 Header (0x90)
+    uint8_t len = strlen(text);
+    for (uint8_t i = 0; i < 16; i++) {
+        pkg6[1 + i] = (i < len) ? (uint8_t)text[i] : ' ';
+    }
+    pkg6[25] = _txRaw[25];
+    pkg6[26] = CDJ_CalculateTxChecksum(pkg6);
+    _spi.setTxPackage(6, pkg6);
+}
+
+void CDJ1000MK3_Panel::setWaveform(const uint8_t* bars100) {
+    if (!bars100) return;
+    uint8_t pkg[CDJ_FRAME_SIZE];
+
+    // Package 0: Bars 1..24
+    memset(pkg, 0, CDJ_FRAME_SIZE);
+    pkg[0] = 0;
+    memcpy(&pkg[1], &bars100[0], 24);
+    pkg[25] = _txRaw[25];
+    pkg[26] = CDJ_CalculateTxChecksum(pkg);
+    _spi.setTxPackage(0, pkg);
+
+    // Package 1: Bars 25..48
+    memset(pkg, 0, CDJ_FRAME_SIZE);
+    pkg[0] = 24;
+    memcpy(&pkg[1], &bars100[24], 24);
+    pkg[25] = _txRaw[25];
+    pkg[26] = CDJ_CalculateTxChecksum(pkg);
+    _spi.setTxPackage(1, pkg);
+
+    // Package 2: Bars 49..72
+    memset(pkg, 0, CDJ_FRAME_SIZE);
+    pkg[0] = 48;
+    memcpy(&pkg[1], &bars100[48], 24);
+    pkg[25] = _txRaw[25];
+    pkg[26] = CDJ_CalculateTxChecksum(pkg);
+    _spi.setTxPackage(2, pkg);
+
+    // Package 3: Bars 73..96
+    memset(pkg, 0, CDJ_FRAME_SIZE);
+    pkg[0] = 72;
+    memcpy(&pkg[1], &bars100[72], 24);
+    pkg[25] = _txRaw[25];
+    pkg[26] = CDJ_CalculateTxChecksum(pkg);
+    _spi.setTxPackage(3, pkg);
+
+    // Package 4: Bars 97..100
+    memset(pkg, 0, CDJ_FRAME_SIZE);
+    pkg[0] = 96;
+    memcpy(&pkg[1], &bars100[96], 4);
+    pkg[25] = _txRaw[25];
+    pkg[26] = CDJ_CalculateTxChecksum(pkg);
+    _spi.setTxPackage(4, pkg);
+}
+
+void CDJ1000MK3_Panel::setRandomWaveform() {
+    uint8_t wfm[100];
+    uint8_t h = 2;
+    for (int i = 0; i < 100; i++) {
+        int r = random(-1, 2);
+        int nh = (int)h + r;
+        if (nh < 1) nh = 1;
+        if (nh > 5) nh = 5;
+        h = nh;
+        if (i % 8 == 0) h = 5; // Beat peak
+        switch (h) {
+            case 1: wfm[i] = 0x01; break;
+            case 2: wfm[i] = 0x03; break;
+            case 3: wfm[i] = 0x07; break;
+            case 4: wfm[i] = 0x0F; break;
+            default: wfm[i] = 0x1F; break;
+        }
+    }
+    setWaveform(wfm);
+}
+
+void CDJ1000MK3_Panel::setTimeDisplay(uint8_t minutes, uint8_t seconds, uint8_t frames) {
+    if (minutes > 99) minutes = 99;
+    if (seconds > 59) seconds = 59;
+    if (frames > 74) frames = 74;
+
+    _txRaw[4] = CDJ_DigitTo7Segment('0' + (minutes / 10));
+    _txRaw[5] = CDJ_DigitTo7Segment('0' + (minutes % 10));
+    _txRaw[7] = CDJ_DigitTo7Segment('0' + (seconds / 10));
+    _txRaw[8] = CDJ_DigitTo7Segment('0' + (seconds % 10));
+    _txRaw[10] = CDJ_DigitTo7Segment('0' + (frames / 10));
+    _txRaw[11] = CDJ_DigitTo7Segment('0' + (frames % 10));
+    _txRaw[26] = CDJ_CalculateTxChecksum(_txRaw);
+    _txDirty = true;
+}
+
+void CDJ1000MK3_Panel::setTempoDisplay(float pitchPercent) {
+    float absVal = fabs(pitchPercent);
+    if (absVal > 99.99f) absVal = 99.99f;
+    uint16_t intVal = (uint16_t)(absVal * 100.0f + 0.5f);
+    uint8_t d1 = (intVal / 100) % 10;
+    uint8_t d2 = (intVal / 10) % 10;
+    uint8_t d3 = intVal % 10;
+
+    _txRaw[13] = CDJ_DigitTo7Segment('0' + d1);
+    _txRaw[14] = CDJ_DigitTo7Segment('0' + d2);
+    _txRaw[15] = CDJ_DigitTo7Segment('0' + d3);
+    _txRaw[26] = CDJ_CalculateTxChecksum(_txRaw);
     _txDirty = true;
 }
 

@@ -52,6 +52,23 @@ public:
     void setTxFrame(const uint8_t *src);
 
     /**
+     * @brief Update a specific package in the multi-package transmission queue (0..7)
+     * @param pkgIndex Package index (0=WFM1, 1=WFM2, 2=WFM3, 3=WFM4, 4=WFM5, 5=TB/CB, 6=Text, 7=Status/LEDs)
+     * @param src 27-byte source buffer
+     */
+    void setTxPackage(uint8_t pkgIndex, const uint8_t *src);
+
+    /**
+     * @brief Set number of packages to cycle through (1 = only package 7; 8 = full screen cycle)
+     */
+    void setNumTxPackages(uint8_t numPkgs);
+
+    /**
+     * @brief Update jog ring cursor byte across all active packages
+     */
+    void updateAllPackagesJogPosition(uint8_t pos);
+
+    /**
      * @brief For Master Mode: Perform synchronous 27-byte full-duplex transfer
      */
     bool transferMaster(const uint8_t *tx, uint8_t *rx);
