@@ -28,6 +28,11 @@ bool CDJ_VerifyRxFrame(const uint8_t *rawBytes) {
 bool CDJ_ParseRxFrame(const uint8_t *rawBytes, CDJ_PanelState_t *outState, bool verifyCrc) {
     if (!rawBytes || !outState) return false;
 
+    // Header validation: Pioneer CDJ-1000 MK3 always sends 0x01 0x10 as frame start
+    if (rawBytes[0] != 0x01 || rawBytes[1] != 0x10) {
+        return false;
+    }
+
     if (verifyCrc) {
         if (!CDJ_VerifyRxFrame(rawBytes)) {
             return false;
@@ -164,6 +169,14 @@ void CDJ_SetTxTouchRingVFD(uint8_t *rawBytes, bool showTouchRing) {
     } else {
         rawBytes[23] &= ~(1 << 5); // VFD touch ring off
     }
+    rawBytes[26] = CDJ_CalculateTxChecksum(rawBytes);
+}
+
+void CDJ_SetTxTrackDisplay(uint8_t *rawBytes, uint8_t trackNumber) {
+    if (!rawBytes) return;
+    if (trackNumber > 99) trackNumber = 99;
+    rawBytes[1] = CDJ_DigitTo7Segment('0' + (trackNumber / 10));
+    rawBytes[2] = CDJ_DigitTo7Segment('0' + (trackNumber % 10));
     rawBytes[26] = CDJ_CalculateTxChecksum(rawBytes);
 }
 

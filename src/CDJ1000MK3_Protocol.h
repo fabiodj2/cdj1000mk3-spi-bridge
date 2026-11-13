@@ -328,6 +328,7 @@ void CDJ_SetTxLed(uint8_t *rawBytes, uint8_t byteIndex, uint8_t bitMask, bool en
 void CDJ_SetTxHotCue(uint8_t *rawBytes, uint8_t cueIndex, CDJ_HotCueColor_t color);
 void CDJ_SetTxJogRing(uint8_t *rawBytes, uint8_t position, uint8_t cuePosition);
 void CDJ_SetTxTouchRingVFD(uint8_t *rawBytes, bool showTouchRing);
+void CDJ_SetTxTrackDisplay(uint8_t *rawBytes, uint8_t trackNumber);
 
 #ifdef __cplusplus
 }

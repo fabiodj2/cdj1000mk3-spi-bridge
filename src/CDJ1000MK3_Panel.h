@@ -63,6 +63,7 @@ public:
     bool getEjectLock() const           { return _state.ejectLocked; }
 
     const CDJ_PanelState_t& getState() const { return _state; }
+    const uint8_t* getRawRx() const { return _rxRaw; }
 
     // -------------------------------------------------------------------------
     // LED & FEEDBACK CONTROLS (Main Assy => Display Board)
@@ -84,6 +85,7 @@ public:
     void setJogPosition(uint8_t pos);         // 1..135 ring position, or 136-138 animations
     void setJogCuePosition(uint8_t cuePos);   // 0=off, 1..85 position
     void setTouchRing(bool on);               // Center VFD circle on touch
+    void setTrackDisplay(uint8_t trackNumber); // 1..99 track number on 7-segment display
 
     // Push pending LED/display changes immediately to SPI transmit frame
     void commitLeds();
@@ -95,6 +97,8 @@ private:
     CDJ1000MK3_SPI    _spi;
     CDJ_PanelState_t  _state;
     CDJ_PanelState_t  _prevState;
+    CDJ_PanelState_t  _debouncedState;
+    bool              _isFirstFrame;
 
     uint8_t           _txRaw[CDJ_FRAME_SIZE];
     uint8_t           _rxRaw[CDJ_FRAME_SIZE];
@@ -103,6 +107,7 @@ private:
     CDJ_ButtonCallback_t _buttonCb;
     CDJ_JogCallback_t    _jogCb;
     CDJ_PitchCallback_t  _pitchCb;
+    uint16_t             _lastDispatchedPitch;
 
     void _dispatchButtonEvents();
 };

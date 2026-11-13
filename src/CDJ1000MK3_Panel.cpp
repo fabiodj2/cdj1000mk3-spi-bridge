@@ -7,14 +7,16 @@
 #include <stdlib.h>
 
 CDJ1000MK3_Panel::CDJ1000MK3_Panel()
-    : _txDirty(false), _buttonCb(nullptr), _jogCb(nullptr), _pitchCb(nullptr) {
+    : _isFirstFrame(true), _txDirty(false), _buttonCb(nullptr), _jogCb(nullptr), _pitchCb(nullptr), _lastDispatchedPitch(8192) {
     memset(&_state, 0, sizeof(_state));
     memset(&_prevState, 0, sizeof(_prevState));
+    memset(&_debouncedState, 0, sizeof(_debouncedState));
     memset(_rxRaw, 0, CDJ_FRAME_SIZE);
     CDJ_InitTxPackage7(_txRaw);
 }
 
 bool CDJ1000MK3_Panel::begin(CDJ_SpiRole_t role, uint8_t csPin) {
+    _isFirstFrame = true;
     CDJ_InitTxPackage7(_txRaw);
     _spi.setTxFrame(_txRaw);
     return _spi.begin(role, csPin);
@@ -27,25 +29,37 @@ bool CDJ1000MK3_Panel::update() {
 
     _spi.getRxFrame(_rxRaw);
 
-    _prevState = _state;
-
-    // Parse packet
+    // Parse packet - MUST match 0x01 0x10 header!
     if (!CDJ_ParseRxFrame(_rxRaw, &_state, false)) {
         return false;
     }
 
-    // Check button transition events
+    // First frame initialization (prevent initial jog delta jump)
+    if (_isFirstFrame) {
+        _isFirstFrame = false;
+        _lastDispatchedPitch = _state.pitchFader;
+        _prevState = _state;
+        _debouncedState = _state;
+        return true;
+    }
+
+    // Debounced button dispatch: state must be stable for 2 frames
     _dispatchButtonEvents();
 
-    // Check Jog rotation
-    if (_state.jogPulseDelta != 0 && _jogCb) {
+    // Check Jog rotation OR touch sensor state change
+    bool jogMoved = (_state.jogPulseDelta != 0);
+    bool touchChanged = (_state.jogTouched != _prevState.jogTouched);
+    if ((jogMoved || touchChanged) && _jogCb) {
         _jogCb(_state.jogPulseDelta, _state.jogTouched, _state.jogSpeed);
     }
 
-    // Check Pitch Fader change (with deadband filtering)
-    if (abs((int32_t)_state.pitchFader - (int32_t)_prevState.pitchFader) >= 4 && _pitchCb) {
+    // Check Pitch Fader change (with deadband filtering against last dispatched value)
+    if (abs((int32_t)_state.pitchFader - (int32_t)_lastDispatchedPitch) >= 48 && _pitchCb) {
+        _lastDispatchedPitch = _state.pitchFader;
         _pitchCb(_state.pitchFader);
     }
+
+    _prevState = _state;
 
     // If LEDs or displays were modified, update transmit buffer
     if (_txDirty) {
@@ -102,6 +116,41 @@ bool CDJ1000MK3_Panel::justReleased(CDJ_ButtonId_t btn) const {
     return !getButtonStateFromStruct(_state, btn) && getButtonStateFromStruct(_prevState, btn);
 }
 
+static void setButtonStateInStruct(CDJ_PanelState_t* st, CDJ_ButtonId_t btn, bool val) {
+    if (!st) return;
+    switch (btn) {
+        case CDJ_ID_PLAY:           st->play = val; break;
+        case CDJ_ID_CUE:            st->cue = val; break;
+        case CDJ_ID_LOOP_IN:        st->loopIn = val; break;
+        case CDJ_ID_LOOP_OUT:       st->loopOut = val; break;
+        case CDJ_ID_RELOOP_EXIT:    st->reloopExit = val; break;
+        case CDJ_ID_HOTCUE_A:       st->hotCueA = val; break;
+        case CDJ_ID_HOTCUE_B:       st->hotCueB = val; break;
+        case CDJ_ID_HOTCUE_C:       st->hotCueC = val; break;
+        case CDJ_ID_REC_MODE:       st->recMode = val; break;
+        case CDJ_ID_TRACK_REV:      st->trackRev = val; break;
+        case CDJ_ID_TRACK_FWD:      st->trackFwd = val; break;
+        case CDJ_ID_SEARCH_REV:     st->searchRev = val; break;
+        case CDJ_ID_SEARCH_FWD:     st->searchFwd = val; break;
+        case CDJ_ID_FOLDER_REV:     st->folderRev = val; break;
+        case CDJ_ID_FOLDER_FWD:     st->folderFwd = val; break;
+        case CDJ_ID_JOG_MODE:       st->jogMode = val; break;
+        case CDJ_ID_TEMPO_RANGE:    st->tempoRange = val; break;
+        case CDJ_ID_MASTER_TEMPO:   st->masterTempo = val; break;
+        case CDJ_ID_TEMPO_RESET:    st->tempoReset = val; break;
+        case CDJ_ID_CALL_FWD:       st->callFwd = val; break;
+        case CDJ_ID_CALL_REV:       st->callRev = val; break;
+        case CDJ_ID_MEMORY:         st->memory = val; break;
+        case CDJ_ID_DELETE:         st->del = val; break;
+        case CDJ_ID_EJECT:          st->eject = val; break;
+        case CDJ_ID_TIME_MODE:      st->timeMode = val; break;
+        case CDJ_ID_TEXT_MODE:      st->textMode = val; break;
+        case CDJ_ID_JOG_TOUCH:      st->jogTouched = val; break;
+        case CDJ_ID_REVERSE_SWITCH: st->reverseSwitch = !val; break;
+        default: break;
+    }
+}
+
 void CDJ1000MK3_Panel::_dispatchButtonEvents() {
     if (!_buttonCb) return;
 
@@ -109,7 +158,11 @@ void CDJ1000MK3_Panel::_dispatchButtonEvents() {
         CDJ_ButtonId_t btn = (CDJ_ButtonId_t)i;
         bool curr = getButtonStateFromStruct(_state, btn);
         bool prev = getButtonStateFromStruct(_prevState, btn);
-        if (curr != prev) {
+        bool debounced = getButtonStateFromStruct(_debouncedState, btn);
+
+        // Signal must be stable for 2 frames before accepting transition
+        if (curr == prev && curr != debounced) {
+            setButtonStateInStruct(&_debouncedState, btn, curr);
             _buttonCb(btn, curr);
         }
     }
@@ -191,6 +244,11 @@ void CDJ1000MK3_Panel::setJogCuePosition(uint8_t cuePos) {
 
 void CDJ1000MK3_Panel::setTouchRing(bool on) {
     CDJ_SetTxTouchRingVFD(_txRaw, on);
+    _txDirty = true;
+}
+
+void CDJ1000MK3_Panel::setTrackDisplay(uint8_t trackNumber) {
+    CDJ_SetTxTrackDisplay(_txRaw, trackNumber);
     _txDirty = true;
 }
 
