@@ -1,6 +1,6 @@
 /**
  * ==============================================================================
- * CDJ-1000 MK3 USB MIDI Controller for Rekordbox, Traktor & VirtualDJ
+ * CDJ-1000 MK3 USB MIDI Controller for DJ Software (Traktor, VirtualDJ, Mixxx)
  * ==============================================================================
  * Connects a physical Pioneer CDJ-1000 MK3 panel directly to your PC as a class-compliant
  * USB MIDI Controller.
@@ -185,7 +185,7 @@ void onHardwarePitch(uint16_t pitchValue) {
 }
 
 // -----------------------------------------------------------------------------
-// MIDI INPUT FROM REKORDBOX / TRAKTOR (Controls CDJ Hardware LEDs)
+// MIDI INPUT FROM DJ SOFTWARE (Controls CDJ Hardware LEDs)
 // -----------------------------------------------------------------------------
 
 void processIncomingMidi() {
@@ -255,7 +255,7 @@ void loop() {
     // Update CDJ-1000 MK3 Panel communication
     cdj.update();
 
-    // Process incoming feedback from Rekordbox / Traktor
+    // Process incoming feedback from DJ software (Traktor / VirtualDJ)
     processIncomingMidi();
 }
 

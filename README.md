@@ -28,7 +28,7 @@ Technical documentation, SPI protocol specifications, hardware interface schemat
 8. [Core Class API Reference](#core-class-api-reference)
 9. [Usage Guide and Application Examples](#usage-guide-and-application-examples)
    - [Example 1: Serial Monitor Diagnostic](#example-1-serial-monitor-diagnostic)
-   - [Example 2: USB MIDI Controller for Rekordbox](#example-2-usb-midi-controller-for-rekordbox)
+   - [Example 2: USB MIDI Controller for DJ Software](#example-2-usb-midi-controller-for-dj-software)
    - [Example 3: Main Board Hardware-in-the-Loop Emulator](#example-3-main-board-hardware-in-the-loop-emulator)
 10. [License and Research Credits](#license-and-research-credits)
 
@@ -64,8 +64,8 @@ P:\CDJ1000MK3-EMULATOR\
 │   ├── CDJ1000MK3_Serial_Monitor\
 │   │   └── CDJ1000MK3_Serial_Monitor.ino      # Hardware diagnostic via Serial Terminal
 │   ├── CDJ1000MK3_USB_MIDI\
-│   │   ├── CDJ1000MK3_USB_MIDI.ino            # Native USB MIDI controller for Rekordbox
-│   │   └── CDJ1000MK3_Rekordbox.csv           # Rekordbox CSV MIDI mapping configuration
+│   │   ├── CDJ1000MK3_USB_MIDI.ino            # Native USB MIDI controller for DJ software
+│   │   └── CDJ1000MK3_MIDI_Mapping.csv        # Standard MIDI mapping CSV configuration file
 │   └── CDJ1000MK3_MainBoard_Emulator\
 │       └── CDJ1000MK3_MainBoard_Emulator.ino  # Top panel emulator for CDJ Motherboard
 ├── reference\                   # Original reverse engineering research notes & C sources
@@ -212,7 +212,7 @@ The context diagram illustrates high-level data exchange between external entiti
 flowchart LR
     CDJ["Pioneer CDJ-1000 MK3 Panel Hardware"]
     SYS["CDJ-1000 MK3 Emulator System (Arduino/ESP32/Teensy)"]
-    HOST["Host PC / DJ Software (Rekordbox / Traktor)"]
+    HOST["Host PC / DJ Software (MIDI)"]
 
     CDJ -- "SPI Bus (SCLK, XCS, SOUT)" --> SYS
     SYS -- "SPI Response (SIN - LEDs, Jog Cursor)" --> CDJ
@@ -510,21 +510,21 @@ void loop() {
 
 ---
 
-### Example 2: USB MIDI Controller for Rekordbox
+### Example 2: USB MIDI Controller for DJ Software
 
-Transforms the CDJ-1000 MK3 top panel into a native USB DJ MIDI controller for software like Pioneer Rekordbox, Traktor Pro, or VirtualDJ.
+Transforms the CDJ-1000 MK3 top panel into a native USB DJ MIDI controller for software like Traktor Pro, VirtualDJ, or Mixxx.
 
 * **Sketch Location:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino)
-* **Mapping File:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv)
+* **Mapping File:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_MIDI_Mapping.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_MIDI_Mapping.csv)
 * **Recommended Boards:** Arduino Pro Micro (ATmega32U4), Teensy 4.0/3.2, Raspberry Pi Pico (RP2040).
 
-#### Rekordbox Configuration Procedure:
-1. Connect the Arduino Pro Micro or Teensy to the computer via USB.
-2. Launch **Pioneer Rekordbox**.
-3. In the top-right corner of the Rekordbox window, click the **MIDI** icon.
-4. In the MIDI Setting window, click the **Import** button.
-5. Select the file [CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv).
-6. Rekordbox will immediately map all controls: Play, Cue, Loop, Hot Cues A/B/C, 14-bit high-resolution pitch slider, jog platter rotation, and touch scratch simulation.
+#### DJ Software MIDI Setup Procedure:
+1. Connect the Arduino Pro Micro, Teensy, or Pico to the computer via USB.
+2. Launch your preferred DJ software (Traktor, VirtualDJ, Mixxx).
+3. Open the **MIDI / Controller Settings** window.
+4. Click the **Import** button.
+5. Select the file [CDJ1000MK3_MIDI_Mapping.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_MIDI_Mapping.csv).
+6. Your DJ software will immediately map all controls: Play, Cue, Loop, Hot Cues A/B/C, 14-bit high-resolution pitch slider, jog platter rotation, and touch scratch simulation.
 
 ---
 
@@ -547,4 +547,4 @@ This project is licensed under the **MIT License**. For full terms, refer to the
 ### Protocol Research Credits:
 This project consolidates, optimizes, and refines reverse-engineering research originally pioneered by:
 1. **Andrei Anatsko** (*Reverse Engineering Pioneer CDJ-1000 serial protocol*).
-2. **vandoeselaar** (*CDJ-1000 mk3 for Rekordbox project*).
+2. **vandoeselaar** (*CDJ-1000 mk3 MIDI bridge project*).

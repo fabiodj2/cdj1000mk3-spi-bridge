@@ -28,7 +28,7 @@ Dokumentasi teknis, spesifikasi protokol SPI, skematik antarmuka perangkat keras
 8. [Referensi API Kelas Utama](#referensi-api-kelas-utama)
 9. [Panduan Penggunaan dan Contoh Aplikasi](#panduan-penggunaan-dan-contoh-aplikasi)
    - [Contoh 1: Serial Monitor Diagnostic](#contoh-1-serial-monitor-diagnostic)
-   - [Contoh 2: USB MIDI Controller untuk Rekordbox](#contoh-2-usb-midi-controller-untuk-rekordbox)
+   - [Contoh 2: USB MIDI Controller untuk DJ Software](#contoh-2-usb-midi-controller-untuk-dj-software)
    - [Contoh 3: Main Board Hardware-in-the-Loop Emulator](#contoh-3-main-board-hardware-in-the-loop-emulator)
 10. [Lisensi dan Kredit Riset](#lisensi-dan-kredit-riset)
 
@@ -64,8 +64,8 @@ P:\CDJ1000MK3-EMULATOR\
 │   ├── CDJ1000MK3_Serial_Monitor\
 │   │   └── CDJ1000MK3_Serial_Monitor.ino      # Pengujian tombol & LED via Serial Terminal
 │   ├── CDJ1000MK3_USB_MIDI\
-│   │   ├── CDJ1000MK3_USB_MIDI.ino            # Native USB MIDI controller untuk Rekordbox
-│   │   └── CDJ1000MK3_Rekordbox.csv           # File konfigurasi mapping CSV Rekordbox
+│   │   ├── CDJ1000MK3_USB_MIDI.ino            # Native USB MIDI controller untuk DJ software
+│   │   └── CDJ1000MK3_MIDI_Mapping.csv        # File konfigurasi mapping CSV MIDI standar
 │   └── CDJ1000MK3_MainBoard_Emulator\
 │       └── CDJ1000MK3_MainBoard_Emulator.ino  # Emulasi panel ke Motherboard CDJ
 ├── reference\                   # Dokumen riset reverse engineering asli & source C
@@ -211,7 +211,7 @@ Diagram konteks menunjukkan interaksi tingkat tinggi antara entitas eksternal (P
 flowchart LR
     CDJ["Perangkat Keras Panel CDJ-1000 MK3"]
     SYS["Sistem Emulator CDJ-1000 MK3 (Arduino/ESP32/Teensy)"]
-    HOST["Host PC / DJ Software (Rekordbox / Traktor)"]
+    HOST["Host PC / DJ Software (MIDI)"]
 
     CDJ -- "Sinyal SPI (SCLK, XCS, SOUT)" --> SYS
     SYS -- "Respon SPI (SIN - LED, Kursor Jog)" --> CDJ
@@ -506,21 +506,21 @@ void loop() {
 
 ---
 
-### Contoh 2: USB MIDI Controller untuk Rekordbox
+### Contoh 2: USB MIDI Controller untuk DJ Software
 
-Mengubah panel CDJ-1000 MK3 menjadi konsol DJ MIDI dengan antarmuka native USB untuk mengendalikan software Rekordbox, Traktor, atau VirtualDJ secara real-time.
+Mengubah panel CDJ-1000 MK3 menjadi konsol DJ MIDI dengan antarmuka native USB untuk mengendalikan software DJ profesional (Traktor, VirtualDJ, Mixxx) secara real-time.
 
 * **Path Sketch:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino)
-* **File Mapping:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv)
+* **File Mapping:** [examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_MIDI_Mapping.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_MIDI_Mapping.csv)
 * **Board yang Direkomendasikan:** Arduino Pro Micro (ATmega32U4), Teensy 4.0/3.2, Raspberry Pi Pico (RP2040).
 
-#### Prosedur Konfigurasi Rekordbox:
-1. Hubungkan board Arduino Pro Micro / Teensy ke port USB komputer.
-2. Buka software **Pioneer Rekordbox**.
-3. Di sudut kanan atas jendela Rekordbox, klik ikon **MIDI**.
-4. Pada jendela MIDI Setting, klik tombol **Import**.
-5. Pilih file [CDJ1000MK3_Rekordbox.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_Rekordbox.csv).
-6. Rekordbox akan langsung mengenali mapping: tombol Play, Cue, Loop, Hot Cue A/B/C, Pitch Slider 14-bit resolusi tinggi, kursor rotasi, serta vinyl scratch saat platter disentuh.
+#### Prosedur Konfigurasi MIDI:
+1. Hubungkan board Arduino Pro Micro / Teensy / Pico ke port USB komputer.
+2. Buka software DJ Anda (Traktor, VirtualDJ, Mixxx).
+3. Buka menu pengaturan / konfigurasi MIDI.
+4. Klik tombol **Import** mapping.
+5. Pilih file [CDJ1000MK3_MIDI_Mapping.csv](file:///P:/CDJ1000MK3-EMULATOR/examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_MIDI_Mapping.csv).
+6. Software DJ akan langsung mengenali mapping: tombol Play, Cue, Loop, Hot Cue A/B/C, Pitch Slider 14-bit resolusi tinggi, kursor rotasi, serta vinyl scratch saat platter disentuh.
 
 ---
 
@@ -543,4 +543,4 @@ Proyek ini dilisensikan di bawah **MIT License**. Teks lisensi lengkap dapat dib
 ### Kredit Riset & Dasar Protokol:
 Proyek ini mengintegrasikan dan menyempurnakan dokumentasi serta riset reverse-engineering yang dirintis oleh:
 1. **Andrei Anatsko** (*Reverse Engineering Pioneer CDJ-1000 serial protocol*).
-2. **vandoeselaar** (*CDJ-1000 mk3 for Rekordbox project*).
+2. **vandoeselaar** (*CDJ-1000 mk3 MIDI bridge project*).

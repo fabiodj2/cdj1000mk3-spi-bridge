@@ -89,11 +89,12 @@
         <span class="text-xs px-2 py-0.5 rounded border border-brand-blue/40 text-brand-blue font-mono font-medium">v1.0.0</span>
       </div>
       <div class="flex items-center space-x-6 text-sm">
+        <a href="#spi-roles" class="text-gray-400 hover:text-white transition">SPI Roles</a>
         <a href="#schematics" class="text-gray-400 hover:text-white transition">Schematics</a>
         <a href="#pinout" class="text-gray-400 hover:text-white transition">Pinout Matrix</a>
         <a href="#dfd" class="text-gray-400 hover:text-white transition">Data Flow</a>
         <a href="#protocol" class="text-gray-400 hover:text-white transition">SPI Protocol</a>
-        <a href="#midi" class="text-gray-400 hover:text-white transition">Rekordbox MIDI</a>
+        <a href="#midi" class="text-gray-400 hover:text-white transition">USB MIDI</a>
         <a href="https://github.com/rayocta303/cdj1000mk3-spi-bridge" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-md bg-brand-blue text-white font-medium hover:bg-blue-600 transition shadow-sm font-mono text-xs">GitHub Repo</a>
       </div>
     </div>
@@ -111,9 +112,9 @@
           High-performance, modular Arduino and embedded C++ driver to interface physical Pioneer CDJ-1000 MK3 top panels. Reads all transport buttons, 3600 PPR jog wheels, and 14-bit pitch faders while controlling bi-directional LED feedbacks and 135-segment jog ring displays.
         </p>
         <div class="mt-8 flex flex-wrap gap-3">
-          <a href="#pinout" class="px-5 py-2.5 rounded-md bg-brand-blue text-white font-medium hover:bg-blue-600 transition font-mono text-xs shadow-md">Explore Pinout Matrix</a>
+          <a href="#spi-roles" class="px-5 py-2.5 rounded-md bg-brand-blue text-white font-medium hover:bg-blue-600 transition font-mono text-xs shadow-md">SPI Master & Slave Roles</a>
           <a href="#schematics" class="px-5 py-2.5 rounded-md border border-brand-border bg-brand-surface text-gray-200 font-medium hover:border-gray-500 transition font-mono text-xs">Hardware Schematics</a>
-          <a href="CDJ1000MK3_Rekordbox.csv" download class="px-5 py-2.5 rounded-md border border-brand-amber/40 bg-brand-amber/10 text-brand-amber font-medium hover:bg-brand-amber/20 transition font-mono text-xs">Download Rekordbox CSV</a>
+          <a href="CDJ1000MK3_MIDI_Mapping.csv" download class="px-5 py-2.5 rounded-md border border-brand-amber/40 bg-brand-amber/10 text-brand-amber font-medium hover:bg-brand-amber/20 transition font-mono text-xs">Download MIDI Mapping CSV</a>
         </div>
       </div>
     </div>
@@ -128,6 +129,7 @@
         <div class="sticky top-24 space-y-1 text-sm border-l border-brand-border pl-4">
           <p class="text-xs font-mono font-semibold text-gray-400 uppercase tracking-wider mb-2">Documentation</p>
           <a href="#features" class="block py-1 text-gray-400 hover:text-brand-blue transition">Key Features</a>
+          <a href="#spi-roles" class="block py-1 text-gray-400 hover:text-brand-blue transition">Master & Slave Roles</a>
           <a href="#schematics" class="block py-1 text-gray-400 hover:text-brand-blue transition">Hardware Schematics</a>
           <a href="#level-shifter" class="block py-1 pl-3 text-xs text-gray-500 hover:text-gray-300 transition">3.3V 74HC245 Wiring</a>
           <a href="#pinout" class="block py-1 text-gray-400 hover:text-brand-blue transition">Pinout Matrix</a>
@@ -136,7 +138,7 @@
           <a href="#packet-rx" class="block py-1 pl-3 text-xs text-gray-500 hover:text-gray-300 transition">Input Frame (Rbuffer)</a>
           <a href="#packet-tx" class="block py-1 pl-3 text-xs text-gray-500 hover:text-gray-300 transition">Output Frame (Tbuffer)</a>
           <a href="#api" class="block py-1 text-gray-400 hover:text-brand-blue transition">API Reference</a>
-          <a href="#midi" class="block py-1 text-gray-400 hover:text-brand-blue transition">Rekordbox Integration</a>
+          <a href="#midi" class="block py-1 text-gray-400 hover:text-brand-blue transition">USB MIDI Integration</a>
           <a href="#author" class="block py-1 text-gray-400 hover:text-brand-blue transition">License & Credits</a>
         </div>
       </aside>
@@ -164,6 +166,49 @@
               <h3 class="text-sm font-semibold text-white font-mono mb-1">135-Step Jog Ring Cursor</h3>
               <p class="text-xs text-gray-400 leading-relaxed">Precise rotary position updates (1..135 steps), 85-step Cue cursor, full circle fill, and native disc load/eject animations.</p>
             </div>
+          </div>
+        </section>
+
+        <!-- Section: SPI Master & Slave Dual-Role Support -->
+        <section id="spi-roles" class="space-y-4">
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">SPI Master & Slave Dual-Role Support</h2>
+          <p class="text-sm text-gray-400">
+            The library features a fully dual-mode architecture, allowing your microcontroller to operate either as an <strong>SPI Master</strong> (driving the physical display board standalone) or as an <strong>SPI Slave</strong> (interfacing with the native CDJ motherboard).
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div class="p-5 rounded-lg bg-brand-card border border-brand-blue/40 space-y-2">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-brand-blue font-mono">SPI MASTER (Standalone Mode)</h3>
+                <span class="text-xs px-2 py-0.5 rounded bg-brand-blue/20 text-brand-blue border border-brand-blue/30 font-mono">Replaces Motherboard</span>
+              </div>
+              <p class="text-xs text-gray-300 leading-relaxed">
+                Connect your Arduino, Teensy, or Raspberry Pi Pico <strong>directly to the CDJ-1000 MK3 top panel without the motherboard</strong>.
+              </p>
+              <ul class="text-xs text-gray-400 space-y-1 font-mono list-disc list-inside">
+                <li>Microcontroller actively drives <code class="text-gray-200">SCLK</code> and pulses <code class="text-gray-200">XCS</code>.</li>
+                <li>Sends validated 27-byte display & LED packages (0..7) at 50-100 Hz.</li>
+                <li>Pulls button states, 3600 PPR jog pulses, and 14-bit pitch data.</li>
+                <li>Call: <code class="text-brand-blue">cdj.begin(CDJ_ROLE_MASTER, PIN_CS);</code></li>
+              </ul>
+            </div>
+            <div class="p-5 rounded-lg bg-brand-card border border-brand-amber/40 space-y-2">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-brand-amber font-mono">SPI SLAVE (Sniffer Mode)</h3>
+                <span class="text-xs px-2 py-0.5 rounded bg-brand-amber/20 text-brand-amber border border-brand-amber/30 font-mono">Motherboard Present</span>
+              </div>
+              <p class="text-xs text-gray-300 leading-relaxed">
+                Connect to the SPI bus while the Pioneer motherboard is present and generating clock signals.
+              </p>
+              <ul class="text-xs text-gray-400 space-y-1 font-mono list-disc list-inside">
+                <li>Microcontroller listens to external <code class="text-gray-200">SCLK</code> & <code class="text-gray-200">XCS</code> interrupts.</li>
+                <li>Captures real-time hardware telemetry without bus interference.</li>
+                <li>Can emulate custom panel responses back to the Main Assy.</li>
+                <li>Call: <code class="text-brand-amber">cdj.begin(CDJ_ROLE_SLAVE, PIN_CS);</code></li>
+              </ul>
+            </div>
+          </div>
+          <div class="p-4 rounded-lg bg-brand-surface border border-brand-border text-xs font-mono text-gray-300">
+            <span class="text-brand-green font-bold">Dynamic Runtime Role Switching:</span> You can switch operating roles on the fly using <code class="text-brand-blue">cdj.setRole(CDJ_ROLE_MASTER)</code> or <code class="text-brand-amber">cdj.setRole(CDJ_ROLE_SLAVE)</code> without resetting the microcontroller. Registers, pin directions, and interrupt vectors are reconfigured automatically.
           </div>
         </section>
 
@@ -386,11 +431,11 @@
               <pre class="mermaid text-center">
 flowchart LR
     CDJ["Physical CDJ-1000 MK3 Panel"]
-    SYS["cdj1000mk3-spi-bridge (MCU Emulator)"]
-    HOST["Host PC / Rekordbox DJ Software"]
+    SYS["cdj1000mk3-spi-bridge (Master/Slave MCU)"]
+    HOST["Host PC / DJ Software (MIDI)"]
 
-    CDJ -- "SPI Clock & Data (SCLK, XCS, SOUT)" --> SYS
-    SYS -- "SPI Responses (SIN - LEDs, Jog Cursor)" --> CDJ
+    CDJ -- "SPI Bus (SCLK, XCS, SOUT, SIN)" --> SYS
+    SYS -- "SPI Responses (LEDs, Jog Cursor, VFD)" --> CDJ
     
     SYS -- "USB MIDI Events (Note On/Off, Pitch CC, Jog CC)" --> HOST
     HOST -- "MIDI Output Feedback (LED States)" --> SYS
@@ -629,9 +674,12 @@ flowchart TD
               <p class="text-gray-400">CDJ1000MK3_Panel cdj;</p>
             </div>
             <div class="space-y-2 border-t border-brand-border pt-3">
-              <p class="text-white font-semibold">Lifecycle Methods:</p>
-              <p class="text-gray-300">cdj.begin(CDJ_ROLE_SLAVE); <span class="text-gray-500">// Initializes SPI with pins from CDJ1000MK3_Pins.h</span></p>
-              <p class="text-gray-300">cdj.update(); <span class="text-gray-500">// Must be called in void loop() to process frames</span></p>
+              <p class="text-white font-semibold">Lifecycle & Role Switching Methods:</p>
+              <p class="text-gray-300">cdj.begin(CDJ_ROLE_MASTER); <span class="text-gray-500">// Initialize as Master (drives panel standalone) or CDJ_ROLE_SLAVE</span></p>
+              <p class="text-gray-300">cdj.setRole(CDJ_ROLE_SLAVE); <span class="text-gray-500">// Switch role dynamically at runtime without resetting MCU</span></p>
+              <p class="text-gray-300">cdj.isMaster(); <span class="text-gray-500">// Returns true if operating as SPI Master</span></p>
+              <p class="text-gray-300">cdj.setMasterPollInterval(15); <span class="text-gray-500">// Set Master polling interval (default: 15ms ~ 66Hz)</span></p>
+              <p class="text-gray-300">cdj.update(); <span class="text-gray-500">// Processes SPI transfers & edge detection (call in loop())</span></p>
             </div>
             <div class="space-y-2 border-t border-brand-border pt-3">
               <p class="text-white font-semibold">Event Callbacks:</p>
@@ -644,6 +692,8 @@ flowchart TD
               <p class="text-gray-300">cdj.setPlayLed(true); <span class="text-gray-500">// Play green LED</span></p>
               <p class="text-gray-300">cdj.setCueLed(true); <span class="text-gray-500">// Cue amber LED</span></p>
               <p class="text-gray-300">cdj.setHotCue(0, HOTCUE_GREEN); <span class="text-gray-500">// 0=A, 1=B, 2=C (HOTCUE_OFF/GREEN/ORANGE/RED)</span></p>
+              <p class="text-gray-300">cdj.setVinylLed(true); <span class="text-gray-500">// Vinyl blue LED</span></p>
+              <p class="text-gray-300">cdj.setCdjLed(false); <span class="text-gray-500">// CDJ green LED</span></p>
               <p class="text-gray-300">cdj.setJogPosition(pos); <span class="text-gray-500">// 1..135 ring position</span></p>
               <p class="text-gray-300">cdj.setTouchRing(true); <span class="text-gray-500">// Center VFD touch ring visual</span></p>
               <p class="text-gray-300">cdj.commitLeds(); <span class="text-gray-500">// Pushes modified state to transmit SPI buffer</span></p>
@@ -651,20 +701,20 @@ flowchart TD
           </div>
         </section>
 
-        <!-- Section: Rekordbox MIDI Integration -->
+        <!-- Section: USB MIDI Integration -->
         <section id="midi" class="space-y-4">
-          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">Rekordbox MIDI Integration</h2>
+          <h2 class="text-2xl font-bold text-white border-b border-brand-border pb-2">USB MIDI & DJ Software Integration</h2>
           <p class="text-sm text-gray-400">
-            Convert your physical CDJ-1000 MK3 top panel into a plug-and-play USB MIDI Controller using an Arduino Pro Micro (ATmega32U4), Teensy, or RP2040.
+            Convert your physical CDJ-1000 MK3 top panel into a plug-and-play USB MIDI Controller for professional DJ software (such as Traktor Pro, VirtualDJ, Mixxx, or any MIDI-capable host) using an Arduino Pro Micro (ATmega32U4), Teensy, or Raspberry Pi Pico (RP2040).
           </p>
           <div class="p-5 rounded-lg bg-brand-card border border-brand-border space-y-3">
-            <h3 class="text-sm font-semibold text-white font-mono">1-Minute Setup Procedure:</h3>
+            <h3 class="text-sm font-semibold text-white font-mono">Setup Procedure:</h3>
             <ol class="list-decimal list-inside text-xs text-gray-300 space-y-2 font-mono">
-              <li>Upload <code class="text-brand-blue">examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino</code> to your board.</li>
-              <li>Plug your Arduino USB into your PC / Mac. It will enumerate natively as a USB MIDI Controller.</li>
-              <li>Open <strong>Pioneer Rekordbox</strong>, click <strong>MIDI</strong> in the top-right toolbar.</li>
-              <li>Click <strong>Import</strong> and select the mapping file: <a href="CDJ1000MK3_Rekordbox.csv" download class="text-brand-blue underline font-bold">CDJ1000MK3_Rekordbox.csv</a>.</li>
-              <li>Your physical CDJ-1000 MK3 buttons, 14-bit pitch slider, vinyl touch, and scratching now directly control Rekordbox Deck 1/2.</li>
+              <li>Upload <code class="text-brand-blue">examples/CDJ1000MK3_USB_MIDI/CDJ1000MK3_USB_MIDI.ino</code> to your native USB board.</li>
+              <li>Connect your board USB to your PC / Mac. It will enumerate natively as a Class-Compliant USB MIDI Device.</li>
+              <li>Open your DJ software MIDI configuration menu.</li>
+              <li>Import the standard MIDI mapping file: <a href="CDJ1000MK3_MIDI_Mapping.csv" download class="text-brand-blue underline font-bold">CDJ1000MK3_MIDI_Mapping.csv</a>.</li>
+              <li>Your physical CDJ-1000 MK3 buttons, 14-bit pitch slider, vinyl touch, and scratching now directly control Deck 1/2 with full bi-directional LED feedback.</li>
             </ol>
           </div>
         </section>
@@ -677,7 +727,7 @@ flowchart TD
             Developed and maintained by <strong>Hanif Bagus Saputra</strong> (<a href="https://github.com/rayocta303" target="_blank" rel="noopener noreferrer" class="text-brand-blue hover:underline">@rayocta303</a>).
           </p>
           <p class="text-xs text-gray-500 leading-relaxed">
-            Built upon pioneering reverse-engineering research by <strong>Andrei Anatsko</strong> (CDJ-1000 serial protocol documentation) and <strong>vandoeselaar</strong> (CDJ-1000 MK3 for Rekordbox).
+            Built upon pioneering reverse-engineering research by <strong>Andrei Anatsko</strong> (CDJ-1000 serial protocol documentation) and <strong>vandoeselaar</strong> (CDJ-1000 MK3 USB MIDI research).
           </p>
         </section>
 
