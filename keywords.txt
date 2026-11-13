@@ -1,0 +1,75 @@
+#######################################
+# Syntax Highlighting for CDJ1000MK3
+#######################################
+
+#######################################
+# Datatypes and Classes (KEYWORD1)
+#######################################
+CDJ1000MK3_Panel	KEYWORD1
+CDJ1000MK3_SPI	KEYWORD1
+CDJ_ButtonId_t	KEYWORD1
+CDJ_HotCueColor_t	KEYWORD1
+CDJ_PanelState_t	KEYWORD1
+CDJ_RxFrame_t	KEYWORD1
+CDJ_TxFrame_t	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+begin	KEYWORD2
+update	KEYWORD2
+onButton	KEYWORD2
+onJog	KEYWORD2
+onPitch	KEYWORD2
+isPressed	KEYWORD2
+justPressed	KEYWORD2
+justReleased	KEYWORD2
+isJogTouched	KEYWORD2
+isJogRotating	KEYWORD2
+getJogDelta	KEYWORD2
+getJogPulses	KEYWORD2
+getPitch	KEYWORD2
+setPlayLed	KEYWORD2
+setCueLed	KEYWORD2
+setLoopInLed	KEYWORD2
+setLoopOutLed	KEYWORD2
+setReloopExitLed	KEYWORD2
+setReverseLed	KEYWORD2
+setHotCue	KEYWORD2
+setMasterTempoLed	KEYWORD2
+setTempoResetLed	KEYWORD2
+setVinylLed	KEYWORD2
+setCdjLed	KEYWORD2
+setJogPosition	KEYWORD2
+setJogCuePosition	KEYWORD2
+setTouchRing	KEYWORD2
+commitLeds	KEYWORD2
+getButtonName	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+CDJ_ROLE_SLAVE	LITERAL1
+CDJ_ROLE_MASTER	LITERAL1
+CDJ_PIN_SCLK	LITERAL1
+CDJ_PIN_MISO	LITERAL1
+CDJ_PIN_MOSI	LITERAL1
+CDJ_PIN_CS	LITERAL1
+CDJ_BOARD_NAME	LITERAL1
+HOTCUE_OFF	LITERAL1
+HOTCUE_GREEN	LITERAL1
+HOTCUE_ORANGE	LITERAL1
+HOTCUE_RED	LITERAL1
+CDJ_ID_PLAY	LITERAL1
+CDJ_ID_CUE	LITERAL1
+CDJ_ID_LOOP_IN	LITERAL1
+CDJ_ID_LOOP_OUT	LITERAL1
+CDJ_ID_RELOOP_EXIT	LITERAL1
+CDJ_ID_HOTCUE_A	LITERAL1
+CDJ_ID_HOTCUE_B	LITERAL1
+CDJ_ID_HOTCUE_C	LITERAL1
+CDJ_ID_JOG_MODE	LITERAL1
+CDJ_ID_MASTER_TEMPO	LITERAL1
+CDJ_ID_TEMPO_RANGE	LITERAL1
+CDJ_ID_JOG_TOUCH	LITERAL1
+
