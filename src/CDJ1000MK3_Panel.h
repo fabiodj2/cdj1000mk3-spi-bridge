@@ -15,6 +15,7 @@
 typedef void (*CDJ_ButtonCallback_t)(CDJ_ButtonId_t btn, bool pressed);
 typedef void (*CDJ_JogCallback_t)(int16_t deltaPulses, bool touched, uint16_t speed);
 typedef void (*CDJ_PitchCallback_t)(uint16_t pitchValue);
+typedef void (*CDJ_KnobsCallback_t)(uint8_t touchBrake, uint8_t releaseStart);
 
 class CDJ1000MK3_Panel {
 public:
@@ -72,6 +73,7 @@ public:
     void onButton(CDJ_ButtonCallback_t cb) { _buttonCb = cb; }
     void onJog(CDJ_JogCallback_t cb)       { _jogCb = cb; }
     void onPitch(CDJ_PitchCallback_t cb)   { _pitchCb = cb; }
+    void onKnobs(CDJ_KnobsCallback_t cb)   { _knobCb = cb; }
 
     // -------------------------------------------------------------------------
     // INPUT STATE GETTERS
@@ -154,7 +156,10 @@ private:
     CDJ_ButtonCallback_t _buttonCb;
     CDJ_JogCallback_t    _jogCb;
     CDJ_PitchCallback_t  _pitchCb;
+    CDJ_KnobsCallback_t  _knobCb;
     uint16_t             _lastDispatchedPitch;
+    uint8_t              _lastDispatchedTouchBrake;
+    uint8_t              _lastDispatchedReleaseStart;
 
     void _dispatchButtonEvents();
 };

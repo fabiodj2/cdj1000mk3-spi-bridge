@@ -121,6 +121,7 @@ typedef enum {
     CDJ_ID_TEXT_MODE,
     CDJ_ID_JOG_TOUCH,
     CDJ_ID_REVERSE_SWITCH,
+    CDJ_ID_LOCK_SWITCH,
     CDJ_ID_MAX
 } CDJ_ButtonId_t;
 
@@ -151,7 +152,7 @@ typedef enum {
 #define CDJ_LED_MASTER_TEMPO        (1 << 3)  // Master Tempo Red LED
 #define CDJ_LED_TEMPO_RESET         (1 << 4)  // Tempo Reset Green LED
 #define CDJ_LED_VINYL               (1 << 5)  // Vinyl Blue LED
-#define CDJ_LED_CDJ                 (1 << 6)  // CDJ Green LED
+#define CDJ_LED_CDJ                 ((1 << 6) | (1 << 7)) // CDJ Green LED (dual mask bit 6 & bit 7 for universal board compatibility)
 #define CDJ_LED_SD_CARD             (1 << 7)  // SD Card Green LED
 
 // Hot Cue Color States

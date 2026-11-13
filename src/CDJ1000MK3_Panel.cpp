@@ -10,7 +10,8 @@ CDJ1000MK3_Panel::CDJ1000MK3_Panel()
     : _role(CDJ_ROLE_SLAVE), _csPin(CDJ_PIN_CS), _clockSpeed(CDJ_SPI_CLOCK_HZ),
       _masterPollIntervalMs(15), _lastMasterPollTime(0),
       _isFirstFrame(true), _txDirty(false),
-      _buttonCb(nullptr), _jogCb(nullptr), _pitchCb(nullptr), _lastDispatchedPitch(8192) {
+      _buttonCb(nullptr), _jogCb(nullptr), _pitchCb(nullptr), _knobCb(nullptr),
+      _lastDispatchedPitch(8192), _lastDispatchedTouchBrake(0), _lastDispatchedReleaseStart(0) {
     memset(&_state, 0, sizeof(_state));
     memset(&_prevState, 0, sizeof(_prevState));
     memset(&_debouncedState, 0, sizeof(_debouncedState));
@@ -82,6 +83,8 @@ bool CDJ1000MK3_Panel::update() {
     if (_isFirstFrame) {
         _isFirstFrame = false;
         _lastDispatchedPitch = _state.pitchFader;
+        _lastDispatchedTouchBrake = _state.touchBrake;
+        _lastDispatchedReleaseStart = _state.releaseStart;
         _prevState = _state;
         _debouncedState = _state;
         return true;
@@ -101,6 +104,17 @@ bool CDJ1000MK3_Panel::update() {
     if (abs((int32_t)_state.pitchFader - (int32_t)_lastDispatchedPitch) >= 48 && _pitchCb) {
         _lastDispatchedPitch = _state.pitchFader;
         _pitchCb(_state.pitchFader);
+    }
+
+    // Check Touch/Brake and Release/Start Knobs (with deadband filtering)
+    if (_knobCb) {
+        int16_t diffBrake = (int16_t)_state.touchBrake - (int16_t)_lastDispatchedTouchBrake;
+        int16_t diffRelease = (int16_t)_state.releaseStart - (int16_t)_lastDispatchedReleaseStart;
+        if (abs(diffBrake) >= 2 || abs(diffRelease) >= 2) {
+            _lastDispatchedTouchBrake = _state.touchBrake;
+            _lastDispatchedReleaseStart = _state.releaseStart;
+            _knobCb(_state.touchBrake, _state.releaseStart);
+        }
     }
 
     _prevState = _state;
@@ -144,6 +158,7 @@ static bool getButtonStateFromStruct(const CDJ_PanelState_t& st, CDJ_ButtonId_t 
         case CDJ_ID_TEXT_MODE:      return st.textMode;
         case CDJ_ID_JOG_TOUCH:      return st.jogTouched;
         case CDJ_ID_REVERSE_SWITCH: return !st.reverseSwitch; // Active reverse
+        case CDJ_ID_LOCK_SWITCH:    return st.ejectLocked;    // True = Unlocked, False = Locked
         default:                    return false;
     }
 }
@@ -191,6 +206,7 @@ static void setButtonStateInStruct(CDJ_PanelState_t* st, CDJ_ButtonId_t btn, boo
         case CDJ_ID_TEXT_MODE:      st->textMode = val; break;
         case CDJ_ID_JOG_TOUCH:      st->jogTouched = val; break;
         case CDJ_ID_REVERSE_SWITCH: st->reverseSwitch = !val; break;
+        case CDJ_ID_LOCK_SWITCH:    st->ejectLocked = val; break;
         default: break;
     }
 }
@@ -458,6 +474,7 @@ const char* CDJ1000MK3_Panel::getButtonName(CDJ_ButtonId_t btn) {
         case CDJ_ID_TEXT_MODE:      return "TEXT MODE";
         case CDJ_ID_JOG_TOUCH:      return "JOG PLATTER TOUCH";
         case CDJ_ID_REVERSE_SWITCH: return "REVERSE SWITCH";
+        case CDJ_ID_LOCK_SWITCH:    return "EJECT LOCK SWITCH";
         default:                    return "UNKNOWN";
     }
 }

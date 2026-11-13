@@ -24,6 +24,21 @@
 CDJ1000MK3_Panel cdj;
 
 // -----------------------------------------------------------------------------
+// OPERATING SPI ROLE SELECTION (MASTER vs SLAVE)
+// -----------------------------------------------------------------------------
+// Pilih opsi mode operasional SPI:
+//  - CDJ_ROLE_MASTER : Gunakan jika menghubungkan Arduino LANGSUNG ke Top Display Panel
+//                      CDJ-1000 MK3 (tanpa motherboard CDJ). Arduino bertindak sebagai
+//                      SPI Master yang membangkitkan clock SCLK, Chip Select XCS,
+//                      dan mengontrol status LED/display secara mandiri (Standalone).
+//  - CDJ_ROLE_SLAVE  : Gunakan jika motherboard CDJ masih terhubung (Motherboard yang
+//                      membangkitkan clock SCLK, Arduino hanya mendengarkan/sniffing).
+// Catatan: Anda juga dapat mengganti peran secara dinamis saat runtime dengan memanggil:
+//          cdj.setRole(CDJ_ROLE_MASTER); atau cdj.setRole(CDJ_ROLE_SLAVE);
+//          atau menekan tombol 'm' di Serial Monitor!
+#define CDJ_DEFAULT_SPI_ROLE    CDJ_ROLE_SLAVE
+
+// -----------------------------------------------------------------------------
 // TELEMETRY & DIAGNOSTIC CONFIGURATION
 // -----------------------------------------------------------------------------
 bool streamRawHex     = false;
@@ -154,14 +169,17 @@ void handleHotCuePress(uint8_t index) {
         }
     } else {
         if (s_hotCueColor[index] != (uint8_t)HOTCUE_OFF) {
-            // Jump to Hot Cue
+            // Already active: Turn OFF LED and deactivate Hot Cue point
+            s_hotCueColor[index] = (uint8_t)HOTCUE_OFF;
+            updateHotCueLeds();
+            cdj.commitLeds();
             if (streamEvents) {
                 Serial.print(F("[BUTTON]   HOT CUE "));
                 Serial.print((char)('A' + index));
-                Serial.println(F("          -> PRESSED   Jump to Hot Cue Point"));
+                Serial.println(F("          -> PRESSED   Deactivated (LED OFF)"));
             }
         } else {
-            // Quick Assign
+            // Quick Assign & Turn ON Green LED
             s_hotCueColor[index] = (uint8_t)HOTCUE_GREEN;
             updateHotCueLeds();
             cdj.commitLeds();
@@ -186,6 +204,15 @@ void onButtonEvent(CDJ_ButtonId_t btn, bool pressed) {
         if (streamEvents) {
             Serial.print(F("[SWITCH]   DIRECTION SWITCH     -> "));
             Serial.println(s_reverseActive ? F("REVERSE (Red Reverse LED ON)") : F("FORWARD (Normal / LED OFF)"));
+        }
+        return;
+    }
+
+    // Mechanical 2-position switch: Eject Lock switch (1 = UNLOCK, 0 = LOCK)
+    if (btn == CDJ_ID_LOCK_SWITCH) {
+        if (streamEvents) {
+            Serial.print(F("[SWITCH]   EJECT LOCK SWITCH    -> "));
+            Serial.println(pressed ? F("UNLOCKED (Eject Enabled)") : F("LOCKED (Eject Disabled)"));
         }
         return;
     }
@@ -453,6 +480,10 @@ void onButtonEvent(CDJ_ButtonId_t btn, bool pressed) {
             break;
 
         case CDJ_ID_EJECT:
+            if (!cdj.isPressed(CDJ_ID_LOCK_SWITCH)) {
+                if (streamEvents) Serial.println(F("[BUTTON]   EJECT                -> PRESSED   Ignored (Eject Switch is LOCKED)"));
+                break;
+            }
             s_isEjecting = true;
             s_lastEjectTime = millis();
             cdj.setJogPosition(CDJ_JOG_POS_EJECT_ANIM);
@@ -461,6 +492,7 @@ void onButtonEvent(CDJ_ButtonId_t btn, bool pressed) {
             break;
 
         case CDJ_ID_REVERSE_SWITCH:
+        case CDJ_ID_LOCK_SWITCH:
             // Handled directly at the top of onButtonEvent for immediate switch state transition
             break;
 
@@ -569,6 +601,27 @@ void onPitchEvent(uint16_t pitchValue) {
 }
 
 // -----------------------------------------------------------------------------
+// EVENT CALLBACK: TOUCH/BRAKE & RELEASE/START KNOBS
+// -----------------------------------------------------------------------------
+void onKnobsEvent(uint8_t touchBrake, uint8_t releaseStart) {
+    if (streamEvents) {
+        static uint32_t lastKnobPrint = 0;
+        if (millis() - lastKnobPrint >= 80) {
+            Serial.print(F("[KNOB]     TOUCH/BRAKE: "));
+            if (touchBrake < 10) Serial.print(F("  "));
+            else if (touchBrake < 100) Serial.print(' ');
+            Serial.print(touchBrake);
+            Serial.print(F("/255 | RELEASE/START: "));
+            if (releaseStart < 10) Serial.print(F("  "));
+            else if (releaseStart < 100) Serial.print(' ');
+            Serial.print(releaseStart);
+            Serial.println(F("/255"));
+            lastKnobPrint = millis();
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
 // MENU & SNAPSHOT UTILITIES
 // -----------------------------------------------------------------------------
 void printMenu() {
@@ -585,6 +638,7 @@ void printMenu() {
     Serial.println(F("   - Touch Platter   : Pauses time & spinning (Vinyl Scratch)"));
     Serial.println(F("   - Rotate Platter  : Scrubs time forward / backward"));
     Serial.println(F(" Keyboard Commands:"));
+    Serial.println(F("   [m] Switch SPI Role (MASTER <-> SLAVE)"));
     Serial.println(F("   [1] Toggle Event Stream      [2] Toggle Raw Hex Stream"));
     Serial.println(F("   [3] Toggle Analog Stream     [w] Re-roll Random Waveform"));
     Serial.println(F("   [p] Toggle Play/Pause        [c] Trigger Cue Reset"));
@@ -596,6 +650,15 @@ void printMenu() {
 void printStatusSnapshot() {
     const CDJ_PanelState_t& st = cdj.getState();
     Serial.println(F("\n--- HARDWARE STATUS SNAPSHOT ---"));
+    Serial.print(F("SPI Role Mode      : "));
+    if (cdj.isMaster()) {
+        Serial.print(F("SPI MASTER (Standalone - Direct to Display Board @ "));
+        Serial.print(1000 / cdj.getMasterPollInterval());
+        Serial.println(F(" Hz)"));
+    } else {
+        Serial.println(F("SPI SLAVE (Listening to External Motherboard Clock)"));
+    }
+
     Serial.print(F("SPI Communication  : "));
     Serial.print(currentFps, 1);
     Serial.println(F(" Frames/Sec (Hz)"));
@@ -637,6 +700,17 @@ void printStatusSnapshot() {
 
     Serial.print(F("Direction Switch   : "));
     Serial.println(st.reverseSwitch ? F("FORWARD") : F("REVERSE"));
+
+    Serial.print(F("Eject Lock Switch  : "));
+    Serial.println(st.ejectLocked ? F("UNLOCKED (1)") : F("LOCKED (0)"));
+
+    Serial.print(F("Touch/Brake Knob   : "));
+    Serial.print(st.touchBrake);
+    Serial.println(F("/255"));
+
+    Serial.print(F("Release/Start Knob : "));
+    Serial.print(st.releaseStart);
+    Serial.println(F("/255"));
     Serial.println(F("--------------------------------\n"));
 }
 
@@ -694,9 +768,15 @@ void setup() {
     Serial.print(PIN_UNO_MOSI);
     Serial.print(F(", CS/XCS=Pin "));
     Serial.println(PIN_UNO_CS);
-    Serial.println(F("Initializing SPI Driver in Multi-Package Screen Refresh Mode..."));
+    Serial.print(F("Default SPI Role   : "));
+    if (CDJ_DEFAULT_SPI_ROLE == CDJ_ROLE_MASTER) {
+        Serial.println(F("SPI MASTER (Standalone - Direct to Display Board)"));
+    } else {
+        Serial.println(F("SPI SLAVE (Listening to Pioneer Motherboard)"));
+    }
+    Serial.println(F("Initializing SPI Driver..."));
 
-    if (!cdj.begin(CDJ_ROLE_SLAVE, PIN_UNO_CS)) {
+    if (!cdj.begin(CDJ_DEFAULT_SPI_ROLE, PIN_UNO_CS)) {
         Serial.println(F("[FATAL ERROR] Failed to initialize SPI interface!"));
         while (1);
     }
@@ -714,12 +794,17 @@ void setup() {
     cdj.onButton(onButtonEvent);
     cdj.onJog(onJogEvent);
     cdj.onPitch(onPitchEvent);
+    cdj.onKnobs(onKnobsEvent);
 
     // 5. Apply initial default deck state
     applyCurrentDeckStateToLeds();
 
     printMenu();
-    Serial.println(F("System Ready. Waiting for SPI Clock from CDJ Display Board...\n"));
+    if (cdj.isMaster()) {
+        Serial.println(F("System Ready. Operating as SPI MASTER (Actively driving CDJ Display Panel)...\n"));
+    } else {
+        Serial.println(F("System Ready. Operating as SPI SLAVE (Waiting for clock from Motherboard)...\n"));
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -765,6 +850,8 @@ void loop() {
                 Serial.print(st.touchBrake);
                 Serial.print(F(" | RStart: "));
                 Serial.print(st.releaseStart);
+                Serial.print(F(" | Lock: "));
+                Serial.print(st.ejectLocked ? F("UNLOCK") : F("LOCK"));
                 Serial.print(F(" | JogPulses: "));
                 Serial.print(st.jogPulseCounter);
                 Serial.print(F(" | Touch: "));
@@ -888,6 +975,26 @@ void loop() {
         char cmd = Serial.read();
         if (cmd == '\r' || cmd == '\n' || cmd == ' ') return;
         switch (cmd) {
+            case 'm':
+            case 'M': {
+                CDJ_SpiRole_t newRole = cdj.isMaster() ? CDJ_ROLE_SLAVE : CDJ_ROLE_MASTER;
+                if (cdj.setRole(newRole)) {
+                    Serial.print(F("\n[ROLE SWITCH] SPI Role successfully changed to: "));
+                    if (newRole == CDJ_ROLE_MASTER) {
+                        Serial.println(F("SPI MASTER"));
+                        Serial.println(F("              -> Arduino actively generates SCLK (Pin 13) & XCS (Pin 10)"));
+                        Serial.println(F("              -> Directly drives CDJ Top Display Panel without Motherboard"));
+                    } else {
+                        Serial.println(F("SPI SLAVE"));
+                        Serial.println(F("              -> Arduino listens to external SCLK & XCS"));
+                        Serial.println(F("              -> Requires Pioneer Motherboard to provide clock"));
+                    }
+                    applyCurrentDeckStateToLeds();
+                } else {
+                    Serial.println(F("\n[ROLE SWITCH] ERROR: Failed to switch SPI role!"));
+                }
+                break;
+            }
             case '1':
                 streamEvents = !streamEvents;
                 Serial.print(F("Event Stream: "));
