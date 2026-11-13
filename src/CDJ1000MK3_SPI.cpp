@@ -32,8 +32,8 @@ static inline void handleCsTransition(uint8_t csState) {
         s_byteIdx = 0;
         SPDR = s_txPackages[s_currentPkgIdx][0];
     } else {
-        // Frame end: Rising edge indicates 27-byte packet transmission complete
-        if (s_byteIdx >= 25) { // Received at least 25-27 bytes
+        // Frame end: Rising edge indicates full 27-byte packet transmission complete
+        if (s_byteIdx >= CDJ_FRAME_SIZE) { // Strictly received full 27 bytes
             for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
                 s_rxCompleted[i] = s_rxBuf[i];
             }
@@ -95,7 +95,7 @@ static void onCsPinInterrupt() {
     if (csState == LOW) {
         s_byteIdx = 0;
     } else {
-        if (s_byteIdx >= 25) {
+        if (s_byteIdx >= CDJ_FRAME_SIZE) {
             for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
                 s_rxCompleted[i] = s_rxBuf[i];
             }

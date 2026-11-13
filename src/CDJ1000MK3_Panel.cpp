@@ -29,8 +29,8 @@ bool CDJ1000MK3_Panel::update() {
 
     _spi.getRxFrame(_rxRaw);
 
-    // Parse packet - MUST match 0x01 0x10 header!
-    if (!CDJ_ParseRxFrame(_rxRaw, &_state, false)) {
+    // Parse packet - MUST match 0x01 0x10 header and valid checksum!
+    if (!CDJ_ParseRxFrame(_rxRaw, &_state, true)) {
         return false;
     }
 
