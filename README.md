@@ -86,8 +86,8 @@ Karena logika Display Board CDJ-1000 MK3 dan mikrokontroler berbasis ATmega328P 
   Konektor Panel Atas (CN2002)                (Uno / Nano / Pro Micro / Mega)
  +-----------------------------+             +-------------------------------+
  | Pin 13 : SCLK (SPI Clock)   |------------>| Pin SCK  (D13 / D15 / D52)    |
- | Pin 14 : SOUT (Display Out) |------------>| Pin MISO (D12 / D14 / D50)    |
- | Pin 15 : SIN  (Display In)  |<------------| Pin MOSI (D11 / D16 / D51)    |
+ | Pin 14 : SOUT (Display Out) |------------>| Pin MOSI (D11 / D16 / D51)    |
+ | Pin 15 : SIN  (Display In)  |<------------| Pin MISO (D12 / D14 / D50)    |
  | Pin 16 : XCS  (Chip Select) |------------>| Pin SS   (D10 / D10 / D53)    |
  | Pin GND: Ground             |-------------| Pin GND                       |
  +-----------------------------+             +-------------------------------+
@@ -124,7 +124,7 @@ Metode ini menggunakan IC **74HC245 (Octal Bus Transceiver)** yang diberi daya $
                      |      |      |      |
                      |      |      |     GNDD
                      |      |      |
- CDJ Pin 14 (SOUT) --+------+-----------------> Pin 2  (A0)   (B0) Pin 18 --------> ESP32 GPIO 19 / Teensy Pin 12 (MISO)
+ CDJ Pin 14 (SOUT) --+------+-----------------> Pin 2  (A0)   (B0) Pin 18 --------> ESP32 GPIO 23 / Teensy Pin 11 (MOSI)
                      |             |
                     [C1] 220pF     |
                      |             |
@@ -149,7 +149,7 @@ Metode ini menggunakan IC **74HC245 (Octal Bus Transceiver)** yang diberi daya $
                                  Pin 10 (GND)        ---> GNDD  (Ground bersama)
  
                                  [R4] 470 Ohm
- CDJ Pin 15 (SIN)  <-------------/\/\/\/\------------------------------------------ ESP32 GPIO 23 / Teensy Pin 11 (MOSI)
+ CDJ Pin 15 (SIN)  <-------------/\/\/\/\------------------------------------------ ESP32 GPIO 19 / Teensy Pin 12 (MISO)
  
  CDJ Pin GND (GNDD) -------------------------------------------------------------- GND (Ground bersama MCU)
 ```
@@ -167,7 +167,7 @@ Metode ini menggunakan IC **74HC245 (Octal Bus Transceiver)** yang diberi daya $
 | **Pin 11-15** | **B7 - B3** | *Tidak terhubung* | - | Saluran cadangan |
 | **Pin 16** | **B2** | Pin SCK Mikrokontroler | 3.3V | Output Clock SPI aman ke MCU (GPIO 18 / Pin 13) |
 | **Pin 17** | **B1** | Pin CS Mikrokontroler | 3.3V | Output Chip Select aman ke MCU (GPIO 5 / Pin 10) |
-| **Pin 18** | **B0** | Pin MISO Mikrokontroler | 3.3V | Output Data Serial aman ke MCU (GPIO 19 / Pin 12) |
+| **Pin 18** | **B0** | Pin MOSI Mikrokontroler | 3.3V | Output data serial CDJ aman ke input MOSI MCU (GPIO 23 / Pin 11) |
 | **Pin 19** | **/OE** | Ground Bersama (GNDD) | 0V | Mengaktifkan output buffer (Active Low) |
 | **Pin 20** | **VCC** | Pin 3.3V MCU | 3.3V | Catu daya IC level shifter dari mikrokontroler |
 
@@ -192,9 +192,9 @@ Jika Anda tidak ingin menyolder IC 74HC245 dan resistor/kapasitor pasif, Anda da
  |                      |     +------------->| GND (Low Side Ground)    |<----------| Pin GND (Ground)     |
  |                      |                    |                          |           |                      |
  | Pin 13 (SCLK - 5V)   |------------------->| HV1                  LV1 |---------->| Pin SCK (GPIO 18/D13)|
- | Pin 14 (SOUT - 5V)   |------------------->| HV2                  LV2 |---------->| Pin MISO(GPIO 19/D12)|
+ | Pin 14 (SOUT - 5V)   |------------------->| HV2                  LV2 |---------->| Pin MOSI(GPIO 23/D11)|
  | Pin 16 (XCS  - 5V)   |------------------->| HV3                  LV3 |---------->| Pin CS  (GPIO 5 /D10)|
- | Pin 15 (SIN  - In)   |<-------------------| HV4                  LV4 |<----------| Pin MOSI(GPIO 23/D11)|
+ | Pin 15 (SIN  - In)   |<-------------------| HV4                  LV4 |<----------| Pin MISO(GPIO 19/D12)|
  +----------------------+                    +--------------------------+           +----------------------+
 ```
 

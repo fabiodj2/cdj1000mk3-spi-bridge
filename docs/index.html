@@ -187,8 +187,8 @@
 <pre>PIONEER CDJ-1000 MK3 (CN2002)             ARDUINO 5V BOARD (Uno / Nano / Pro Micro / Mega)
 +-----------------------------+          +----------------------------------------------+
 | Pin 13 : SCLK (SPI Clock)   |--------->| Pin SCK  (Uno: D13 / Pro Micro: D15 / Mega: D52)
-| Pin 14 : SOUT (Data from CDJ)|-------->| Pin MISO (Uno: D12 / Pro Micro: D14 / Mega: D50)
-| Pin 15 : SIN  (Data to CDJ) |<---------| Pin MOSI (Uno: D11 / Pro Micro: D16 / Mega: D51)
+| Pin 14 : SOUT (Data from CDJ)|-------->| Pin MOSI (Uno: D11 / Pro Micro: D16 / Mega: D51)
+| Pin 15 : SIN  (Data to CDJ) |<---------| Pin MISO (Uno: D12 / Pro Micro: D14 / Mega: D50)
 | Pin 16 : XCS  (Chip Select) |--------->| Pin SS   (Uno: D10 / Pro Micro: D10 / Mega: D53)
 | Pin GND: Ground             |----------| Pin GND                                      |
 +-----------------------------+          +----------------------------------------------+</pre>
@@ -217,7 +217,7 @@
                      |      |      |      |
                      |      |      |     GND
                      |      |      |
- CDJ Pin 14 (SOUT) --+------+-----------------> Pin 2  (A0)   (B0) Pin 18 --------> ESP32 GPIO 19 / Teensy Pin 12 (MISO)
+ CDJ Pin 14 (SOUT) --+------+-----------------> Pin 2  (A0)   (B0) Pin 18 --------> ESP32 GPIO 23 / Teensy Pin 11 (MOSI)
                      |             |
                     [C1] 220pF     |
                      |             |
@@ -242,7 +242,7 @@
                                  Pin 10 (GND)        ---> GND   (Common Ground)
  
                                  [R4] 470 Ohm Series Resistor
- CDJ Pin 15 (SIN)  <-------------/\/\/\/\------------------------------------------ ESP32 GPIO 23 / Teensy Pin 11 (MOSI)
+ CDJ Pin 15 (SIN)  <-------------/\/\/\/\------------------------------------------ ESP32 GPIO 19 / Teensy Pin 12 (MISO)
  
  CDJ Ground (GND)  --------------------------------------------------------------- GND (Common Ground)</pre>
             </div>
@@ -308,8 +308,8 @@
                 <tr class="bg-brand-surface text-gray-300 font-mono">
                   <th class="p-3 border-b border-brand-border">Target Board</th>
                   <th class="p-3 border-b border-brand-border">SCLK (Pin 13)</th>
-                  <th class="p-3 border-b border-brand-border">SOUT/MISO (Pin 14)</th>
-                  <th class="p-3 border-b border-brand-border">SIN/MOSI (Pin 15)</th>
+                  <th class="p-3 border-b border-brand-border">SOUT -> MOSI (Pin 14)</th>
+                  <th class="p-3 border-b border-brand-border">SIN <- MISO (Pin 15)</th>
                   <th class="p-3 border-b border-brand-border">XCS/CS (Pin 16)</th>
                   <th class="p-3 border-b border-brand-border">Logic Voltage</th>
                 </tr>
@@ -318,56 +318,56 @@
                 <tr class="hover:bg-brand-surface/40 transition">
                   <td class="p-3 text-white font-semibold">Arduino Uno / Nano</td>
                   <td class="p-3">Pin 13</td>
-                  <td class="p-3">Pin 12</td>
-                  <td class="p-3">Pin 11</td>
+                  <td class="p-3">Pin 11 (MOSI)</td>
+                  <td class="p-3">Pin 12 (MISO)</td>
                   <td class="p-3">Pin 10</td>
                   <td class="p-3 text-brand-green">5V (Direct)</td>
                 </tr>
                 <tr class="hover:bg-brand-surface/40 transition">
                   <td class="p-3 text-white font-semibold">Arduino Pro Micro (32U4)</td>
                   <td class="p-3">Pin 15 (SCK)</td>
-                  <td class="p-3">Pin 14 (MISO)</td>
                   <td class="p-3">Pin 16 (MOSI)</td>
+                  <td class="p-3">Pin 14 (MISO)</td>
                   <td class="p-3">Pin 10 (SS)</td>
                   <td class="p-3 text-brand-green">5V (Direct - Native USB)</td>
                 </tr>
                 <tr class="hover:bg-brand-surface/40 transition">
                   <td class="p-3 text-white font-semibold">Arduino Mega 2560</td>
                   <td class="p-3">Pin 52</td>
-                  <td class="p-3">Pin 50</td>
-                  <td class="p-3">Pin 51</td>
+                  <td class="p-3">Pin 51 (MOSI)</td>
+                  <td class="p-3">Pin 50 (MISO)</td>
                   <td class="p-3">Pin 53</td>
                   <td class="p-3 text-brand-green">5V (Direct)</td>
                 </tr>
                 <tr class="hover:bg-brand-surface/40 transition">
                   <td class="p-3 text-white font-semibold">ESP32 (Standard VSPI)</td>
                   <td class="p-3">GPIO 18</td>
-                  <td class="p-3">GPIO 19</td>
-                  <td class="p-3">GPIO 23</td>
+                  <td class="p-3">GPIO 23 (MOSI)</td>
+                  <td class="p-3">GPIO 19 (MISO)</td>
                   <td class="p-3">GPIO 5</td>
                   <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
                 </tr>
                 <tr class="hover:bg-brand-surface/40 transition">
                   <td class="p-3 text-white font-semibold">Teensy 4.0 / 4.1 / 3.2</td>
                   <td class="p-3">Pin 13</td>
-                  <td class="p-3">Pin 12</td>
-                  <td class="p-3">Pin 11</td>
+                  <td class="p-3">Pin 11 (MOSI)</td>
+                  <td class="p-3">Pin 12 (MISO)</td>
                   <td class="p-3">Pin 10</td>
                   <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
                 </tr>
                 <tr class="hover:bg-brand-surface/40 transition">
                   <td class="p-3 text-white font-semibold">STM32 Blue Pill (SPI1)</td>
                   <td class="p-3">PA5</td>
-                  <td class="p-3">PA6</td>
-                  <td class="p-3">PA7</td>
+                  <td class="p-3">PA7 (MOSI)</td>
+                  <td class="p-3">PA6 (MISO)</td>
                   <td class="p-3">PA4</td>
                   <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
                 </tr>
                 <tr class="hover:bg-brand-surface/40 transition">
                   <td class="p-3 text-white font-semibold">Raspberry Pi Pico (RP2040)</td>
                   <td class="p-3">GP18</td>
-                  <td class="p-3">GP16</td>
-                  <td class="p-3">GP19</td>
+                  <td class="p-3">GP19 (MOSI)</td>
+                  <td class="p-3">GP16 (MISO)</td>
                   <td class="p-3">GP17</td>
                   <td class="p-3 text-brand-amber">3.3V (Requires Shifter)</td>
                 </tr>

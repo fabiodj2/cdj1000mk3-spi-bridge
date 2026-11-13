@@ -89,10 +89,10 @@
     // -------------------------------------------------------------------------
     // ARDUINO UNO / NANO / PRO MINI (ATmega328P - 5V)
     // -------------------------------------------------------------------------
-    #define CDJ_PIN_SCLK            13   // SCK
-    #define CDJ_PIN_MISO            12   // MISO (SOUT dari CDJ)
-    #define CDJ_PIN_MOSI            11   // MOSI (SIN ke CDJ)
-    #define CDJ_PIN_CS              10   // SS / XCS (Active Low)
+    #define CDJ_PIN_SCLK            13   // SCK (Input Clock dari CDJ Pin 13)
+    #define CDJ_PIN_MISO            12   // MISO (Output Slave ke SIN CDJ Pin 15)
+    #define CDJ_PIN_MOSI            11   // MOSI (Input Slave dari SOUT CDJ Pin 14)
+    #define CDJ_PIN_CS              10   // SS / XCS (Frame Sync dari CDJ Pin 16)
     #define CDJ_BOARD_NAME          "Arduino Uno / Nano (ATmega328P)"
 
 #elif defined(CDJ_BOARD_PRO_MICRO)

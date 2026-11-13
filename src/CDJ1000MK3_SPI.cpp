@@ -23,14 +23,12 @@ static WORD_ALIGNED_ATTR uint8_t s_esp32_rx[CDJ_FRAME_SIZE];
 #endif
 
 // Forward interrupt handlers
-static void onCsPinInterrupt() {
-    uint8_t csState = digitalRead(s_csPinInternal);
+#if defined(__AVR__)
+static inline void handleCsTransition(uint8_t csState) {
     if (csState == LOW) {
         // Frame start: Reset byte counter and preload first transmit byte
         s_byteIdx = 0;
-#if defined(__AVR__)
         SPDR = s_txBuf[0];
-#endif
     } else {
         // Frame end: Rising edge indicates 27-byte packet transmission complete
         if (s_byteIdx >= 25) { // Received at least 25-27 bytes
@@ -40,10 +38,26 @@ static void onCsPinInterrupt() {
             s_frameReady = true;
         }
         s_byteIdx = 0;
+        SPDR = s_txBuf[0]; // Preload for start of next frame
     }
 }
 
-#if defined(__AVR__)
+static void onCsPinInterrupt() {
+    handleCsTransition(digitalRead(s_csPinInternal));
+}
+
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+// Pin Change Interrupt for Pin 10 (PB2 / PCINT2 on PORTB)
+ISR(PCINT0_vect) {
+    static uint8_t s_lastCsPinState = HIGH;
+    uint8_t currentCsState = (PINB & _BV(PINB2)) ? HIGH : LOW;
+    if (currentCsState != s_lastCsPinState) {
+        s_lastCsPinState = currentCsState;
+        handleCsTransition(currentCsState);
+    }
+}
+#endif
+
 // AVR Hardware SPI Slave Complete Interrupt
 ISR(SPI_STC_vect) {
     uint8_t inByte = SPDR;
@@ -54,10 +68,30 @@ ISR(SPI_STC_vect) {
         if (s_byteIdx < CDJ_FRAME_SIZE) {
             SPDR = s_txBuf[s_byteIdx];
         } else {
-            SPDR = 0x00; // Pad after packet
+            // Frame complete! All 27 bytes received
+            for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
+                s_rxCompleted[i] = s_rxBuf[i];
+            }
+            s_frameReady = true;
+            SPDR = s_txBuf[0]; // Reset preload for next packet
         }
     } else {
-        SPDR = 0x00;
+        SPDR = s_txBuf[0];
+    }
+}
+#else
+static void onCsPinInterrupt() {
+    uint8_t csState = digitalRead(s_csPinInternal);
+    if (csState == LOW) {
+        s_byteIdx = 0;
+    } else {
+        if (s_byteIdx >= 25) {
+            for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
+                s_rxCompleted[i] = s_rxBuf[i];
+            }
+            s_frameReady = true;
+        }
+        s_byteIdx = 0;
     }
 }
 #endif
@@ -90,8 +124,20 @@ bool CDJ1000MK3_SPI::begin(CDJ_SpiRole_t role, uint8_t csPin, uint32_t clockSpee
         // Preload first byte into SPDR
         SPDR = s_txBuf[0];
 
-        // Attach frame synchronization interrupt on CS pin
-        attachInterrupt(digitalPinToInterrupt(_csPin), onCsPinInterrupt, CHANGE);
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+        if (_csPin == 10) {
+            // Pin 10 is PB2 (PCINT2). Enable Pin Change Interrupt on PORTB
+            PCMSK0 |= _BV(PCINT2);
+            PCIFR  |= _BV(PCIF0);
+            PCICR  |= _BV(PCIE0);
+        } else if (digitalPinToInterrupt(_csPin) != NOT_AN_INTERRUPT) {
+            attachInterrupt(digitalPinToInterrupt(_csPin), onCsPinInterrupt, CHANGE);
+        }
+#else
+        if (digitalPinToInterrupt(_csPin) != NOT_AN_INTERRUPT) {
+            attachInterrupt(digitalPinToInterrupt(_csPin), onCsPinInterrupt, CHANGE);
+        }
+#endif
 
         // Set SPI Control Register (SPCR):
         // SPE=1 (SPI Enable), SPIE=1 (Interrupt Enable), CPOL=1, CPHA=1 (SPI Mode 3), MSTR=0 (Slave)
