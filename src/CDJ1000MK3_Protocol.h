@@ -320,6 +320,15 @@ static inline uint8_t CDJ_DigitTo7Segment(char digit) {
     }
 }
 
+// Function prototypes implemented in CDJ1000MK3_Protocol.cpp
+bool CDJ_VerifyRxFrame(const uint8_t *rawBytes);
+bool CDJ_ParseRxFrame(const uint8_t *rawBytes, CDJ_PanelState_t *outState, bool verifyCrc);
+void CDJ_InitTxPackage7(uint8_t *rawBytes);
+void CDJ_SetTxLed(uint8_t *rawBytes, uint8_t byteIndex, uint8_t bitMask, bool enable);
+void CDJ_SetTxHotCue(uint8_t *rawBytes, uint8_t cueIndex, CDJ_HotCueColor_t color);
+void CDJ_SetTxJogRing(uint8_t *rawBytes, uint8_t position, uint8_t cuePosition);
+void CDJ_SetTxTouchRingVFD(uint8_t *rawBytes, bool showTouchRing);
+
 #ifdef __cplusplus
 }
 #endif
