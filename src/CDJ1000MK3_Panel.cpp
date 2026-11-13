@@ -7,7 +7,10 @@
 #include <stdlib.h>
 
 CDJ1000MK3_Panel::CDJ1000MK3_Panel()
-    : _isFirstFrame(true), _txDirty(false), _buttonCb(nullptr), _jogCb(nullptr), _pitchCb(nullptr), _lastDispatchedPitch(8192) {
+    : _role(CDJ_ROLE_SLAVE), _csPin(CDJ_PIN_CS), _clockSpeed(CDJ_SPI_CLOCK_HZ),
+      _masterPollIntervalMs(15), _lastMasterPollTime(0),
+      _isFirstFrame(true), _txDirty(false),
+      _buttonCb(nullptr), _jogCb(nullptr), _pitchCb(nullptr), _lastDispatchedPitch(8192) {
     memset(&_state, 0, sizeof(_state));
     memset(&_prevState, 0, sizeof(_prevState));
     memset(&_debouncedState, 0, sizeof(_debouncedState));
@@ -15,21 +18,62 @@ CDJ1000MK3_Panel::CDJ1000MK3_Panel()
     CDJ_InitTxPackage7(_txRaw);
 }
 
-bool CDJ1000MK3_Panel::begin(CDJ_SpiRole_t role, uint8_t csPin) {
+bool CDJ1000MK3_Panel::begin(CDJ_SpiRole_t role, uint8_t csPin, uint32_t clockSpeed) {
+    _role = role;
+    _csPin = csPin;
+    _clockSpeed = clockSpeed;
     _isFirstFrame = true;
+    _lastMasterPollTime = 0;
     CDJ_InitTxPackage7(_txRaw);
     _spi.setTxFrame(_txRaw);
-    return _spi.begin(role, csPin);
+    return _spi.begin(role, csPin, clockSpeed);
+}
+
+bool CDJ1000MK3_Panel::setRole(CDJ_SpiRole_t role, uint32_t clockSpeed) {
+    _role = role;
+    _clockSpeed = clockSpeed;
+    _isFirstFrame = true;
+    _lastMasterPollTime = 0;
+    _spi.setTxFrame(_txRaw);
+    return _spi.setRole(role, clockSpeed);
 }
 
 bool CDJ1000MK3_Panel::update() {
-    if (!_spi.isFrameAvailable()) {
-        return false;
+    if (_role == CDJ_ROLE_MASTER) {
+        uint32_t now = millis();
+        if (now - _lastMasterPollTime < _masterPollIntervalMs) {
+            return false;
+        }
+        _lastMasterPollTime = now;
+
+        // In Master Mode: Commit pending LED modifications into active transmit package
+        if (_txDirty) {
+            _spi.setTxFrame(_txRaw);
+            _txDirty = false;
+        }
+
+        // Retrieve current package to transmit (cycling 0..7 or single package 7)
+        uint8_t currentTx[CDJ_FRAME_SIZE];
+        _spi.getCurrentTxPackage(currentTx);
+        currentTx[26] = CDJ_CalculateTxChecksum(currentTx);
+
+        // Perform synchronous 27-byte full-duplex SPI transfer
+        if (!_spi.transferMaster(currentTx, _rxRaw)) {
+            return false;
+        }
+
+        // Advance to next package in cycle
+        _spi.advanceTxPackage();
+    } else {
+        // SLAVE MODE: Wait for clock & CS from external Master (Motherboard)
+        if (!_spi.isFrameAvailable()) {
+            return false;
+        }
+
+        _spi.getRxFrame(_rxRaw);
     }
 
-    _spi.getRxFrame(_rxRaw);
-
-    // Parse packet - MUST match 0x01 0x10 header and valid checksum!
+    // Parse packet - MUST match 0x01 0x10 header and valid signature!
     if (!CDJ_ParseRxFrame(_rxRaw, &_state, true)) {
         return false;
     }

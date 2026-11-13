@@ -28,11 +28,38 @@ public:
 
     /**
      * @brief Initialize SPI interface
-     * @param role CDJ_ROLE_SLAVE (default for panel reading) or CDJ_ROLE_MASTER
+     * @param role CDJ_ROLE_SLAVE (for reading panel when motherboard provides clock) or CDJ_ROLE_MASTER (standalone/drives panel)
      * @param csPin Chip Select pin (SS). Defaults to CDJ_PIN_CS from CDJ1000MK3_Pins.h
-     * @param clockSpeed Clock speed in Hz for Master mode (e.g. 1000000 for 1MHz)
+     * @param clockSpeed Clock speed in Hz for Master mode (default: CDJ_SPI_CLOCK_HZ)
      */
     bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ);
+
+    /**
+     * @brief Switch operating SPI role at runtime (reconfigures hardware registers & pins)
+     * @param role CDJ_ROLE_MASTER or CDJ_ROLE_SLAVE
+     * @param clockSpeed Clock speed in Hz for Master mode
+     */
+    bool setRole(CDJ_SpiRole_t role, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ);
+
+    /**
+     * @brief Deinitialize and release SPI hardware registers & interrupts
+     */
+    void end();
+
+    /**
+     * @brief Get currently active SPI role
+     */
+    CDJ_SpiRole_t getRole() const { return _role; }
+
+    /**
+     * @brief Check if currently operating in Master mode
+     */
+    bool isMaster() const { return _role == CDJ_ROLE_MASTER; }
+
+    /**
+     * @brief Check if currently operating in Slave mode
+     */
+    bool isSlave() const { return _role == CDJ_ROLE_SLAVE; }
 
     /**
      * @brief Check if a complete 27-byte frame has been received from the CDJ
@@ -62,6 +89,26 @@ public:
      * @brief Set number of packages to cycle through (1 = only package 7; 8 = full screen cycle)
      */
     void setNumTxPackages(uint8_t numPkgs);
+
+    /**
+     * @brief Get current number of packages in cycle
+     */
+    uint8_t getNumTxPackages() const;
+
+    /**
+     * @brief Copy current transmit package in queue (0..7) to destination buffer
+     */
+    void getCurrentTxPackage(uint8_t *dest);
+
+    /**
+     * @brief Advance to next package in cycle (0..s_numTxPackages - 1)
+     */
+    void advanceTxPackage();
+
+    /**
+     * @brief Get currently active package index (0..7)
+     */
+    uint8_t getCurrentPackageIndex() const;
 
     /**
      * @brief Update jog ring cursor byte across all active packages

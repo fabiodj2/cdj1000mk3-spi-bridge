@@ -419,10 +419,20 @@ CDJ1000MK3_Panel cdj;
 ```
 
 #### Initialization & Update Loop
-* `bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS)`:  
-  Initializes hardware SPI in the selected role (Slave or Master) with the assigned Chip Select pin.
+* `bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ)`:  
+  Initializes hardware SPI in the selected role (`CDJ_ROLE_SLAVE` or `CDJ_ROLE_MASTER`), assigning the Chip Select pin and SPI clock frequency.
+* `bool setRole(CDJ_SpiRole_t role, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ)`:  
+  Dynamically switches the operating SPI role (Master <-> Slave) at runtime without restarting the microcontroller. Automatically reconfigures SPI hardware control registers, interrupt masks, and pin directions.
+* `CDJ_SpiRole_t getRole() const`:  
+  Returns the currently active SPI role (`CDJ_ROLE_MASTER` or `CDJ_ROLE_SLAVE`).
+* `bool isMaster() const`: Returns `true` if operating in SPI Master mode.
+* `bool isSlave() const`: Returns `true` if operating in SPI Slave mode.
+* `void setMasterPollInterval(uint32_t intervalMs)`:  
+  Sets the Master mode transmission cycle interval in milliseconds (default: `15` ms ~ 66 Hz).
+* `uint32_t getMasterPollInterval() const`:  
+  Returns the active Master mode polling interval in milliseconds.
 * `bool update()`:  
-  Checks for new SPI frames, parses button states, executes transition edge detection, and commits LED feedback frames. Must be called repeatedly inside `loop()`.
+  Processes SPI communications (both Master polling and Slave interrupt events), parses button states, executes transition edge detection, and commits LED feedback frames. Must be called repeatedly inside `loop()`.
 
 #### Event Callbacks
 * `void onButton(void (*cb)(CDJ_ButtonId_t btn, bool pressed))`:  

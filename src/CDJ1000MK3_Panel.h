@@ -22,10 +22,43 @@ public:
 
     /**
      * @brief Initialize CDJ-1000 MK3 Panel Controller
-     * @param role CDJ_ROLE_SLAVE (default: Arduino reads physical CDJ top panel)
+     * @param role CDJ_ROLE_SLAVE (reading panel when motherboard provides clock) or CDJ_ROLE_MASTER (standalone/direct to panel)
      * @param csPin Chip Select pin (default: CDJ_PIN_CS from CDJ1000MK3_Pins.h)
+     * @param clockSpeed Clock speed in Hz for Master mode (default: CDJ_SPI_CLOCK_HZ)
      */
-    bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS);
+    bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ);
+
+    /**
+     * @brief Switch operating SPI role at runtime (reconfigures hardware SPI registers & pin directions)
+     * @param role CDJ_ROLE_MASTER or CDJ_ROLE_SLAVE
+     * @param clockSpeed Clock speed in Hz for Master mode
+     */
+    bool setRole(CDJ_SpiRole_t role, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ);
+
+    /**
+     * @brief Get currently active SPI role
+     */
+    CDJ_SpiRole_t getRole() const { return _role; }
+
+    /**
+     * @brief Check if operating in Master mode
+     */
+    bool isMaster() const { return _role == CDJ_ROLE_MASTER; }
+
+    /**
+     * @brief Check if operating in Slave mode
+     */
+    bool isSlave() const { return _role == CDJ_ROLE_SLAVE; }
+
+    /**
+     * @brief Set Master mode polling interval in milliseconds (default: 15 ms ~ 66 Hz)
+     */
+    void setMasterPollInterval(uint32_t intervalMs) { _masterPollIntervalMs = intervalMs; }
+
+    /**
+     * @brief Get Master mode polling interval in milliseconds
+     */
+    uint32_t getMasterPollInterval() const { return _masterPollIntervalMs; }
 
     /**
      * @brief Periodic update loop. Call this in Arduino loop().
@@ -103,6 +136,12 @@ public:
 
 private:
     CDJ1000MK3_SPI    _spi;
+    CDJ_SpiRole_t     _role;
+    uint8_t           _csPin;
+    uint32_t          _clockSpeed;
+    uint32_t          _masterPollIntervalMs;
+    uint32_t          _lastMasterPollTime;
+
     CDJ_PanelState_t  _state;
     CDJ_PanelState_t  _prevState;
     CDJ_PanelState_t  _debouncedState;

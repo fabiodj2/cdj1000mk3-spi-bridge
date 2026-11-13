@@ -417,10 +417,20 @@ CDJ1000MK3_Panel cdj;
 ```
 
 #### Metode Inisialisasi & Siklus Utama
-* `bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS)`:  
-  Menginisialisasi antarmuka SPI hardware sesuai peran (Slave/Master) dan pin Chip Select yang dipilih.
+* `bool begin(CDJ_SpiRole_t role = CDJ_ROLE_SLAVE, uint8_t csPin = CDJ_PIN_CS, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ)`:  
+  Menginisialisasi antarmuka SPI hardware sesuai peran (`CDJ_ROLE_SLAVE` atau `CDJ_ROLE_MASTER`), pin Chip Select, dan kecepatan clock SPI yang dipilih.
+* `bool setRole(CDJ_SpiRole_t role, uint32_t clockSpeed = CDJ_SPI_CLOCK_HZ)`:  
+  Mengganti peran operasional SPI (Master <-> Slave) secara dinamis saat runtime tanpa me-reset mikrokontroler. Fungsi ini otomatis mengonfigurasi ulang register kontrol SPI AVR/ESP32, mengaktifkan/menonaktifkan interupsi, dan mengubah arah pin (*pin direction*).
+* `CDJ_SpiRole_t getRole() const`:  
+  Mengembalikan peran SPI yang sedang aktif (`CDJ_ROLE_MASTER` atau `CDJ_ROLE_SLAVE`).
+* `bool isMaster() const`: Mengembalikan `true` jika mikrokontroler sedang beroperasi dalam mode SPI Master.
+* `bool isSlave() const`: Mengembalikan `true` jika mikrokontroler sedang beroperasi dalam mode SPI Slave.
+* `void setMasterPollInterval(uint32_t intervalMs)`:  
+  Mengatur interval siklus transmisi SPI Master dalam milidetik (default: `15` ms atau ~66 Hz).
+* `uint32_t getMasterPollInterval() const`:  
+  Mengembalikan nilai interval polling Master mode yang sedang aktif.
 * `bool update()`:  
-  Memeriksa keberadaan frame baru dari bus SPI, mem-parse status tombol, mendeteksi transisi perubahan (*edge changes*), dan memperbarui data balasan LED. Wajib dipanggil berulang di dalam fungsi `loop()`.
+  Memproses komunikasi SPI (baik polling Master maupun event interrupt Slave), mem-parse status tombol, mendeteksi transisi perubahan (*edge changes*), dan memperbarui data balasan LED. Wajib dipanggil berulang di dalam fungsi `loop()`.
 
 #### Metode Registrasi Callback
 * `void onButton(void (*cb)(CDJ_ButtonId_t btn, bool pressed))`:  

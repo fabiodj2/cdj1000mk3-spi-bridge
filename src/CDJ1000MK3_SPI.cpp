@@ -130,14 +130,20 @@ CDJ1000MK3_SPI::CDJ1000MK3_SPI()
 }
 
 bool CDJ1000MK3_SPI::begin(CDJ_SpiRole_t role, uint8_t csPin, uint32_t clockSpeed) {
+    if (_initialized) {
+        end();
+    }
+
     _role = role;
     _csPin = csPin;
     _clockSpeed = clockSpeed;
     s_csPinInternal = csPin;
+    s_byteIdx = 0;
+    s_frameReady = false;
 
     if (_role == CDJ_ROLE_SLAVE) {
         // ---------------------------------------------------------------------
-        // SLAVE MODE (Connected to CDJ-1000 MK3 Display Board)
+        // SLAVE MODE (Connected to CDJ-1000 MK3 Display Board / Motherboard Clock)
         // ---------------------------------------------------------------------
 #if defined(__AVR__)
         // AVR Hardware SPI Slave configuration
@@ -147,7 +153,7 @@ bool CDJ1000MK3_SPI::begin(CDJ_SpiRole_t role, uint8_t csPin, uint32_t clockSpee
         pinMode(_csPin, INPUT_PULLUP);
 
         // Preload first byte into SPDR
-        SPDR = s_txPackages[0][0];
+        SPDR = s_txPackages[s_currentPkgIdx][0];
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
         if (_csPin == 10) {
@@ -205,14 +211,61 @@ bool CDJ1000MK3_SPI::begin(CDJ_SpiRole_t role, uint8_t csPin, uint32_t clockSpee
 
     } else {
         // ---------------------------------------------------------------------
-        // MASTER MODE (Arduino acts as CDJ Main Assy)
+        // MASTER MODE (Arduino acts as CDJ Main Assy - drives Display Panel)
         // ---------------------------------------------------------------------
         pinMode(_csPin, OUTPUT);
         digitalWrite(_csPin, HIGH);
+        pinMode(CDJ_PIN_SCLK, OUTPUT);
+        pinMode(CDJ_PIN_MOSI, OUTPUT);
+        pinMode(CDJ_PIN_MISO, INPUT);
+
         SPI.begin();
         _initialized = true;
         return true;
     }
+}
+
+bool CDJ1000MK3_SPI::setRole(CDJ_SpiRole_t role, uint32_t clockSpeed) {
+    if (_initialized) {
+        end();
+    }
+    return begin(role, _csPin, clockSpeed);
+}
+
+void CDJ1000MK3_SPI::end() {
+    if (!_initialized) return;
+
+#if defined(__AVR__)
+    if (_role == CDJ_ROLE_SLAVE) {
+        SPCR &= ~(_BV(SPE) | _BV(SPIE)); // Disable SPI & Interrupts
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+        if (_csPin == 10) {
+            PCMSK0 &= ~_BV(PCINT2);
+        } else if (digitalPinToInterrupt(_csPin) != NOT_AN_INTERRUPT) {
+            detachInterrupt(digitalPinToInterrupt(_csPin));
+        }
+#else
+        if (digitalPinToInterrupt(_csPin) != NOT_AN_INTERRUPT) {
+            detachInterrupt(digitalPinToInterrupt(_csPin));
+        }
+#endif
+    } else {
+        SPI.end();
+    }
+#elif defined(ESP32)
+    if (_role == CDJ_ROLE_SLAVE) {
+        spi_slave_free(VSPI_HOST);
+    } else {
+        SPI.end();
+    }
+#else
+    if (digitalPinToInterrupt(_csPin) != NOT_AN_INTERRUPT) {
+        detachInterrupt(digitalPinToInterrupt(_csPin));
+    }
+    SPI.end();
+#endif
+
+    _initialized = false;
 }
 
 bool CDJ1000MK3_SPI::isFrameAvailable() {
@@ -276,6 +329,36 @@ void CDJ1000MK3_SPI::setNumTxPackages(uint8_t numPkgs) {
     s_numTxPackages = numPkgs;
 }
 
+uint8_t CDJ1000MK3_SPI::getNumTxPackages() const {
+    return s_numTxPackages;
+}
+
+void CDJ1000MK3_SPI::getCurrentTxPackage(uint8_t *dest) {
+    if (!dest) return;
+#if defined(__AVR__)
+    uint8_t oldSreg = SREG;
+    cli();
+#endif
+    for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
+        dest[i] = s_txPackages[s_currentPkgIdx][i];
+    }
+#if defined(__AVR__)
+    SREG = oldSreg;
+#endif
+}
+
+void CDJ1000MK3_SPI::advanceTxPackage() {
+    if (s_numTxPackages > 1) {
+        s_currentPkgIdx = (s_currentPkgIdx + 1) % s_numTxPackages;
+    } else {
+        s_currentPkgIdx = 0;
+    }
+}
+
+uint8_t CDJ1000MK3_SPI::getCurrentPackageIndex() const {
+    return s_currentPkgIdx;
+}
+
 void CDJ1000MK3_SPI::updateAllPackagesJogPosition(uint8_t pos) {
 #if defined(__AVR__)
     uint8_t oldSreg = SREG;
@@ -295,13 +378,13 @@ bool CDJ1000MK3_SPI::transferMaster(const uint8_t *tx, uint8_t *rx) {
 
     SPI.beginTransaction(SPISettings(_clockSpeed, MSBFIRST, SPI_MODE3));
     digitalWrite(_csPin, LOW);
-    delayMicroseconds(2);
+    delayMicroseconds(5);
 
     for (uint8_t i = 0; i < CDJ_FRAME_SIZE; i++) {
         rx[i] = SPI.transfer(tx[i]);
     }
 
-    delayMicroseconds(2);
+    delayMicroseconds(5);
     digitalWrite(_csPin, HIGH);
     SPI.endTransaction();
 
