@@ -219,11 +219,21 @@ void CDJ1000MK3_Panel::setTempoResetLed(bool on) {
 
 void CDJ1000MK3_Panel::setVinylLed(bool on) {
     CDJ_SetTxLed(_txRaw, 19, CDJ_LED_VINYL, on);
+    if (on) {
+        _txRaw[23] |= (1 << 3) | (1 << 4);  // VFD Vinyl Icon ON
+    } else {
+        _txRaw[23] &= ~((1 << 3) | (1 << 4)); // VFD Vinyl Icon OFF
+    }
+    _txRaw[26] = CDJ_CalculateTxChecksum(_txRaw);
     _txDirty = true;
 }
 
 void CDJ1000MK3_Panel::setCdjLed(bool on) {
     CDJ_SetTxLed(_txRaw, 19, CDJ_LED_CDJ, on);
+    if (on) {
+        _txRaw[23] &= ~((1 << 3) | (1 << 4)); // VFD Vinyl Icon OFF in CDJ mode
+    }
+    _txRaw[26] = CDJ_CalculateTxChecksum(_txRaw);
     _txDirty = true;
 }
 

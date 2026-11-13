@@ -16,13 +16,16 @@ static const uint8_t CDJ_DefaultPkg7[CDJ_FRAME_SIZE] = {
 
 bool CDJ_VerifyRxFrame(const uint8_t *rawBytes) {
     if (!rawBytes) return false;
-    // Check headers
+    // Check headers (Pioneer CDJ-1000 MK3 always sends 0x01 0x10)
     if (rawBytes[0] != 0x01 || rawBytes[1] != 0x10) {
         return false;
     }
-    // Checksum verification
-    uint8_t expectedCrc = CDJ_CalculateRxChecksum(rawBytes);
-    return (rawBytes[19] == expectedCrc);
+    // Check Pioneer fixed tail signature (Bytes 20..22: 0xF1, 0x64, 0x76)
+    // This double-framing lock eliminates any shifted or incomplete frames
+    if (rawBytes[20] != 0xF1 || rawBytes[21] != 0x64 || rawBytes[22] != 0x76) {
+        return false;
+    }
+    return true;
 }
 
 bool CDJ_ParseRxFrame(const uint8_t *rawBytes, CDJ_PanelState_t *outState, bool verifyCrc) {

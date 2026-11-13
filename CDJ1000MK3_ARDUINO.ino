@@ -127,6 +127,7 @@ void applyCurrentDeckStateToLeds() {
     cdj.setCdjLed(!s_vinylMode);
     cdj.setMasterTempoLed(s_masterTempo);
     cdj.setTempoResetLed(s_tempoReset);
+    s_reverseActive = cdj.isPressed(CDJ_ID_REVERSE_SWITCH);
     cdj.setReverseLed(s_reverseActive);
 
     // [DISABLED] Kode LCD: Track, Time, & Tempo Display
@@ -177,6 +178,18 @@ void handleHotCuePress(uint8_t index) {
 // EVENT CALLBACK: BUTTONS & SWITCHES
 // -----------------------------------------------------------------------------
 void onButtonEvent(CDJ_ButtonId_t btn, bool pressed) {
+    // Mechanical 2-position switch: handle both FORWARD and REVERSE states immediately
+    if (btn == CDJ_ID_REVERSE_SWITCH) {
+        s_reverseActive = pressed; // pressed is true when switch is in REVERSE position
+        cdj.setReverseLed(s_reverseActive);
+        cdj.commitLeds();
+        if (streamEvents) {
+            Serial.print(F("[SWITCH]   DIRECTION SWITCH     -> "));
+            Serial.println(s_reverseActive ? F("REVERSE (Red Reverse LED ON)") : F("FORWARD (Normal / LED OFF)"));
+        }
+        return;
+    }
+
     if (!pressed) {
         if (streamEvents) {
             Serial.print(F("[BUTTON]   "));
@@ -267,18 +280,24 @@ void onButtonEvent(CDJ_ButtonId_t btn, bool pressed) {
             break;
 
         case CDJ_ID_RELOOP_EXIT:
-            if (s_loopActive) {
+            if (s_loopActive || s_loopInSet) {
+                // Exit Loop: Reset loop state and extinguish ALL Loop LEDs (including LOOP IN)
                 s_loopActive = false;
+                s_loopInSet  = false;
+                cdj.setLoopInLed(false);
                 cdj.setLoopOutLed(false);
                 cdj.setReloopExitLed(false);
                 cdj.commitLeds();
-                if (streamEvents) Serial.println(F("[BUTTON]   RELOOP/EXIT          -> PRESSED   Loop Exited (LEDs OFF)"));
-            } else if (s_loopInSet) {
+                if (streamEvents) Serial.println(F("[BUTTON]   RELOOP/EXIT          -> PRESSED   Loop Exited (All Loop LEDs OFF)"));
+            } else {
+                // Reloop: Jump back into loop
                 s_loopActive = true;
+                s_loopInSet  = true;
+                cdj.setLoopInLed(true);
                 cdj.setLoopOutLed(true);
                 cdj.setReloopExitLed(true);
                 cdj.commitLeds();
-                if (streamEvents) Serial.println(F("[BUTTON]   RELOOP/EXIT          -> PRESSED   Reloop Jumped (LEDs ON)"));
+                if (streamEvents) Serial.println(F("[BUTTON]   RELOOP/EXIT          -> PRESSED   Reloop Jumped (All Loop LEDs ON)"));
             }
             break;
 
@@ -442,13 +461,7 @@ void onButtonEvent(CDJ_ButtonId_t btn, bool pressed) {
             break;
 
         case CDJ_ID_REVERSE_SWITCH:
-            s_reverseActive = !s_reverseActive;
-            cdj.setReverseLed(s_reverseActive);
-            cdj.commitLeds();
-            if (streamEvents) {
-                Serial.print(F("[SWITCH]   DIRECTION SWITCH     -> "));
-                Serial.println(s_reverseActive ? F("REVERSE (Red Reverse LED ON)") : F("FORWARD (Normal)"));
-            }
+            // Handled directly at the top of onButtonEvent for immediate switch state transition
             break;
 
         case CDJ_ID_JOG_TOUCH:
