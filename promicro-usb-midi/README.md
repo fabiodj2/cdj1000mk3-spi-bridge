@@ -37,3 +37,8 @@ scripts/set_deck.sh 1   # nome "CDJ-1000 MK3 1", PID 0x8040; feche/reabra o IDE;
 scripts/set_deck.sh 2   # nome "CDJ-1000 MK3 2", PID 0x8041; feche/reabra o IDE; grave deck2/cdj_deck2
 ```
 Placa: Arduino Leonardo. O script guarda `boards.txt.orig` para restaurar. Grave uma placa por vez (só uma conectada).
+
+## Teste de bancada sem painel (Serial 115200)
+Digite no Monitor Serial: `p` Play, `c` Cue, `i`/`o` Loop In/Out, `x` Reloop, `1` `2` `3` Hot Cue A/B/C, `r` Reverse, `m` Master Tempo,
+`t` liga/desliga toque do jog, `+` `-` jog, `f` varredura de pitch, `b` `n` freio/release, `d` dump, `?` ajuda.
+Gera o mesmo MIDI do painel; serve para mapear no VirtualDJ (Settings → Controllers → Mapper/Learn).

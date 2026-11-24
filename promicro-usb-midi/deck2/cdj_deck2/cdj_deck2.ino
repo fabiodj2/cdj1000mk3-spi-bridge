@@ -224,6 +224,43 @@ static void handleMidiIn() {
   }
 }
 
+#if DEBUG_SERIAL
+// Teste de bancada SEM painel: comandos pelo Monitor Serial (115200) geram o mesmo MIDI do painel.
+//  p=Play c=Cue i=LoopIn o=LoopOut x=Reloop 1/2/3=HotCue A/B/C  r=Reverse  m=MasterTempo
+//  t=toque jog (liga/desliga)  +/-=jog (scratch se toque ligado, senao bend)
+//  f=varredura de pitch  b/n=freio/release  d=dump do ultimo quadro  ?=ajuda
+static bool benchTouch = false;
+static void benchBtn(uint8_t note) { midiNote(note, true); MidiUSB.flush(); delay(60); midiNote(note, false); MidiUSB.flush(); }
+static void benchCommand(int ch) {
+  switch (ch) {
+    case 'p': benchBtn(N_PLAY_PAUSE); break;
+    case 'c': benchBtn(N_CUE); break;
+    case 'i': benchBtn(N_LOOP_IN); break;
+    case 'o': benchBtn(N_LOOP_OUT); break;
+    case 'x': benchBtn(N_RELOOP_EXIT); break;
+    case '1': benchBtn(N_HOTCUE_A); break;
+    case '2': benchBtn(N_HOTCUE_B); break;
+    case '3': benchBtn(N_HOTCUE_C); break;
+    case 'r': benchBtn(N_REVERSE); break;
+    case 'm': benchBtn(N_MASTER_TEMPO); break;
+    case 't': benchTouch = !benchTouch; midiNote(N_JOG_TOUCH, benchTouch); MidiUSB.flush();
+              Serial.println(benchTouch ? F("toque ON") : F("toque OFF")); break;
+    case '+': midiCC(benchTouch ? CC_JOG_SCRATCH : CC_JOG_BEND, 64 + 8); MidiUSB.flush(); break;
+    case '-': midiCC(benchTouch ? CC_JOG_SCRATCH : CC_JOG_BEND, 64 - 8); MidiUSB.flush(); break;
+    case 'b': midiCC(CC_BRAKE, 64); MidiUSB.flush(); break;
+    case 'n': midiCC(CC_RELEASE, 64); MidiUSB.flush(); break;
+    case 'f':
+      for (int v = 0; v <= 16383; v += 256) { midiCC(CC_PITCH_MSB, (v >> 7) & 0x7F); midiCC(CC_PITCH_LSB, v & 0x7F); MidiUSB.flush(); delay(15); }
+      break;
+    case 'd':
+      for (uint8_t i = 0; i < CDJ_FRAME; i++) { if (frame[i] < 16) Serial.print('0'); Serial.print(frame[i], HEX); Serial.print(' '); }
+      Serial.println(); break;
+    case '?': Serial.println(F("p c i o x 1 2 3 r m t + - f b n d")); break;
+    default: break;
+  }
+}
+#endif
+
 void setup() {
 #if DEBUG_SERIAL
   Serial.begin(115200);
@@ -262,9 +299,6 @@ void loop() {
     Serial.print(F(" invalidos=")); Serial.print(invalidFrames);
     Serial.print(F(" curtos=")); Serial.println(badFrames);
   }
-  if (Serial.available() && Serial.read() == 'd') {   // 'd' = dump do ultimo quadro
-    for (uint8_t i = 0; i < CDJ_FRAME; i++) { if (frame[i] < 16) Serial.print('0'); Serial.print(frame[i], HEX); Serial.print(' '); }
-    Serial.println();
-  }
+  while (Serial.available()) benchCommand(Serial.read());
 #endif
 }
