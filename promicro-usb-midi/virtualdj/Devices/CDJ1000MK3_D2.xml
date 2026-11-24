@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<device name="CDJ1000MK3_D2" author="cdj1000mk3-spi-bridge" description="CDJ-1000 MK3 2" version="800" type="MIDI" vid="0x2341" pid="0x8041" drivername="CDJ-1000 MK3 2" macdrivername="CDJ-1000 MK3 2" decks="2">
+  <!-- Botoes: notas do docs/CDJ1000MK3_MIDI_Mapping.csv (+ extras 0x3F..0x48 do firmware) -->
+  <button note="0x0B" name="PLAY" deck="2" channel="1" />
+  <button note="0x0C" name="CUE" deck="2" channel="1" />
+  <button note="0x10" name="LOOP_IN" deck="2" channel="1" />
+  <button note="0x11" name="LOOP_OUT" deck="2" channel="1" />
+  <button note="0x12" name="RELOOP_EXIT" deck="2" channel="1" />
+  <button note="0x1B" name="HOTCUE_A" deck="2" channel="1" />
+  <button note="0x1C" name="HOTCUE_B" deck="2" channel="1" />
+  <button note="0x1D" name="HOTCUE_C" deck="2" channel="1" />
+  <button note="0x15" name="TRACK_BACK" deck="2" channel="1" />
+  <button note="0x16" name="TRACK_FWD" deck="2" channel="1" />
+  <button note="0x17" name="SEARCH_BACK" deck="2" channel="1" />
+  <button note="0x18" name="SEARCH_FWD" deck="2" channel="1" />
+  <button note="0x19" name="FOLDER_BACK" deck="2" channel="1" />
+  <button note="0x1A" name="FOLDER_FWD" deck="2" channel="1" />
+  <button note="0x1E" name="MASTERTEMPO" deck="2" channel="1" />
+  <button note="0x1F" name="TEMPO_RANGE" deck="2" channel="1" />
+  <toggle note="0x20" name="REVERSE" deck="2" channel="1" />
+  <button note="0x36" name="JOG_TOUCH" deck="2" channel="1" />
+  <button note="0x3F" name="JOG_MODE" deck="2" channel="1" />
+  <button note="0x40" name="TEMPO_RESET" deck="2" channel="1" />
+  <button note="0x41" name="REC" deck="2" channel="1" />
+  <button note="0x42" name="CALL_FWD" deck="2" channel="1" />
+  <button note="0x43" name="CALL_REV" deck="2" channel="1" />
+  <button note="0x44" name="MEMORY" deck="2" channel="1" />
+  <button note="0x45" name="DELETE" deck="2" channel="1" />
+  <button note="0x46" name="EJECT" deck="2" channel="1" />
+  <button note="0x47" name="TIME_MODE" deck="2" channel="1" />
+  <button note="0x48" name="TEXT_MODE" deck="2" channel="1" />
+  <!-- Jog: CC relativo 64+delta, 900 passos por volta (3600 pulsos / 4) -->
+  <jog cc="0x21" zero="0x40" full="900" name="JOG_SCRATCH" deck="2" channel="1" />
+  <jog cc="0x22" zero="0x40" full="900" name="JOG_BEND" deck="2" channel="1" />
+  <!-- Pitch 14 bits: MSB = CC 0x00, LSB = CC 0x20. Se o sentido ficar invertido, adicione inverted="true" -->
+  <slider ccmsb="0x00" cc="0x20" name="PITCH" deck="2" channel="1" />
+  <!-- Knobs de freio / release do painel (7 bits) -->
+  <slider cc="0x08" name="BRAKE" deck="2" channel="1" />
+  <slider cc="0x09" name="RELEASE" deck="2" channel="1" />
+  <!-- LEDs do painel (o firmware acende ao receber a nota; hot cue: velocity 127 = verde) -->
+  <led note="0x0B" name="LED_PLAY" default="PLAY" deck="2" channel="1" />
+  <led note="0x0C" name="LED_CUE" default="CUE" deck="2" channel="1" />
+  <led note="0x10" name="LED_LOOP_IN" default="LOOP_IN" deck="2" channel="1" />
+  <led note="0x11" name="LED_LOOP_OUT" default="LOOP_OUT" deck="2" channel="1" />
+  <led note="0x12" name="LED_RELOOP_EXIT" default="RELOOP_EXIT" deck="2" channel="1" />
+  <led note="0x1B" name="LED_HOTCUE_A" default="HOTCUE_A" deck="2" channel="1" />
+  <led note="0x1C" name="LED_HOTCUE_B" default="HOTCUE_B" deck="2" channel="1" />
+  <led note="0x1D" name="LED_HOTCUE_C" default="HOTCUE_C" deck="2" channel="1" />
+  <led note="0x1E" name="LED_MASTERTEMPO" default="MASTERTEMPO" deck="2" channel="1" />
+  <led note="0x20" name="LED_REVERSE" default="REVERSE" deck="2" channel="1" />
+  <led note="0x3F" name="LED_JOG_MODE" default="JOG_MODE" deck="2" channel="1" />
+  <led note="0x40" name="LED_TEMPO_RESET" default="TEMPO_RESET" deck="2" channel="1" />
+</device>

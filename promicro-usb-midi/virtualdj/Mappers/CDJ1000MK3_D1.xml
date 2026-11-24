@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper device="CDJ1000MK3_D1" author="cdj1000mk3-spi-bridge" version="800">
+  <map value="PLAY" action="play_pause" />
+  <map value="CUE" action="cue_button" />
+  <map value="LOOP_IN" action="loop_in" />
+  <map value="LOOP_OUT" action="loop_out" />
+  <map value="RELOOP_EXIT" action="reloop_exit" />
+  <map value="HOTCUE_A" action="hot_cue 1" />
+  <map value="HOTCUE_B" action="hot_cue 2" />
+  <map value="HOTCUE_C" action="hot_cue 3" />
+  <map value="TRACK_BACK" action="browser_scroll -1" />
+  <map value="TRACK_FWD" action="browser_scroll +1" />
+  <map value="SEARCH_BACK" action="seek -2" />
+  <map value="SEARCH_FWD" action="seek +2" />
+  <map value="FOLDER_BACK" action="browser_window 'folders'" />
+  <map value="FOLDER_FWD" action="browser_window 'songs'" />
+  <map value="MASTERTEMPO" action="key_lock" />
+  <map value="TEMPO_RANGE" action="pitch_range +1" />
+  <map value="REVERSE" action="reverse" />
+  <map value="JOG_TOUCH" action="touchwheel_touch" />
+  <map value="JOG_MODE" action="vinyl_mode" />
+  <map value="TEMPO_RESET" action="pitch_zero" />
+  <map value="CALL_FWD" action="goto_cue +1" />
+  <map value="CALL_REV" action="goto_cue -1" />
+  <map value="MEMORY" action="set_cue" />
+  <map value="DELETE" action="delete_cue" />
+  <map value="EJECT" action="unload" />
+  <map value="JOG_SCRATCH" action="touchwheel" />
+  <map value="JOG_BEND" action="jogwheel" />
+  <map value="PITCH" action="pitch" />
+</mapper>

@@ -42,3 +42,11 @@ Placa: Arduino Leonardo. O script guarda `boards.txt.orig` para restaurar. Grave
 Digite no Monitor Serial: `p` Play, `c` Cue, `i`/`o` Loop In/Out, `x` Reloop, `1` `2` `3` Hot Cue A/B/C, `r` Reverse, `m` Master Tempo,
 `t` liga/desliga toque do jog, `+` `-` jog, `f` varredura de pitch, `b` `n` freio/release, `d` dump, `?` ajuda.
 Gera o mesmo MIDI do painel; serve para mapear no VirtualDJ (Settings → Controllers → Mapper/Learn).
+
+## VirtualDJ (macOS)
+Arquivos em `virtualdj/` (gerados por `scripts/gen_virtualdj.py`, formato do VDJPedia ControllerDefinitionMIDI / ControllerMappingFile):
+```bash
+cp virtualdj/Devices/*.xml ~/Documents/VirtualDJ/Devices/
+cp virtualdj/Mappers/*.xml ~/Documents/VirtualDJ/Mappers/
+```
+Reinicie o VirtualDJ. Cada placa vira um controlador (`CDJ1000MK3_D1` canal 1 / `D2` canal 2). Nao testado no VirtualDJ: ajuste ações no Mapper se preciso.
