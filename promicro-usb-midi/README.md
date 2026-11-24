@@ -29,3 +29,11 @@ O painel é o **master** SPI (modo 3, ~1 MHz, 5 V); a Pro Micro é **slave**.
 ## Status — leia
 * Compila para `atmega32u4` (avr-gcc, com stubs do Arduino) e `test/protocol_test.c` passa no PC (`gcc test/protocol_test.c && ./a.out`).
 * **Não testado em hardware.** Pontos a validar: máscara de toque do jog (`SW_TOUCH_MASK`), se o core USB mexe no PB0, e se a interrupção USB atrasa o ISR do SPI (veja `curtos` no serial; a 1 MHz há 8 µs por byte).
+
+## Gravar Deck 1 e Deck 2 (macOS)
+Pastas prontas: `deck1/cdj_deck1` (canal 1) e `deck2/cdj_deck2` (canal 2).
+```bash
+scripts/set_deck.sh 1   # nome "CDJ-1000 MK3 1", PID 0x8040; feche/reabra o IDE; grave deck1/cdj_deck1
+scripts/set_deck.sh 2   # nome "CDJ-1000 MK3 2", PID 0x8041; feche/reabra o IDE; grave deck2/cdj_deck2
+```
+Placa: Arduino Leonardo. O script guarda `boards.txt.orig` para restaurar. Grave uma placa por vez (só uma conectada).
